@@ -1,0 +1,4 @@
+
+
+- finish up basic lighting
+    - need to update Mesh class to handle normals
