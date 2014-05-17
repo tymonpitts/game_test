@@ -38,7 +38,6 @@ class Game(object):
         self.shaders['cube'].store_uniform_location('modelToWorldMatrix')
         self.shaders['cube'].store_uniform_location('worldToCameraMatrix')
         self.shaders['cube'].store_uniform_location('cameraToClipMatrix')
-        self.shaders['cube'].store_uniform_location('dirToLight')
         self.shaders['cube'].store_uniform_location('lightIntensity')
         self.shaders['cube'].store_uniform_location('diffuseColor')
         with self.shaders['cube'] as shader:
@@ -84,10 +83,6 @@ class Game(object):
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
         with self.shaders['cube'] as shader:
-            self.direction_to_light = core.Vector(other=(core.Point() * self.camera.matrix))
-            self.direction_to_light.normalize()
-            GL.glUniform4fv(shader.uniforms['dirToLight'], 1, self.direction_to_light.tolist());
-
             scale = 1.0
             trans = 10.0
 
@@ -157,24 +152,26 @@ class Game(object):
         fps = 0
         self.start_time = last_time = last_fps_time = time.time()
         while glfw.GetWindowParam(glfw.OPENED):
-            cur_time = time.time()
-            self.elapsed_time = cur_time - last_time
-            last_time = cur_time
+            try:
+                cur_time = time.time()
+                self.elapsed_time = cur_time - last_time
+                last_time = cur_time
 
-            if (cur_time - last_fps_time) >= 1.0:
-                last_fps_time = cur_time
-                print 'fps:',fps
-                print 'mouse_movement:',str(self.mouse_movement)
-                print 'camera_mat:'
-                print str(self.camera.model_view_matrix)
-                print 'direction_to_light:', self.direction_to_light
-                print 'dot:', core.Vector(0,0,-1).dot(self.direction_to_light)
-                fps = 0
-            fps += 1
+                if (cur_time - last_fps_time) >= 1.0:
+                    last_fps_time = cur_time
+                    print 'fps:',fps
+                    print 'mouse_movement:',str(self.mouse_movement)
+                    print 'camera_mat:'
+                    print str(self.camera.model_view_matrix)
+                    fps = 0
+                fps += 1
 
-            self.retrieve_mouse_data()
-            self.handle_input()
-            self.display()
+                self.retrieve_mouse_data()
+                self.handle_input()
+                self.display()
+            except:
+                glfw.Terminate()
+                raise
 
 FRAGMENT_SHADER = '''
 #version 330
@@ -197,7 +194,6 @@ layout(location = 1) in vec3 normal;
 
 smooth out vec4 interpColor;
 
-uniform vec4 dirToLight;
 uniform vec4 lightIntensity;
 uniform vec4 diffuseColor;
 
@@ -209,9 +205,10 @@ void main()
 {
     gl_Position = cameraToClipMatrix * worldToCameraMatrix * modelToWorldMatrix * vec4(position, 1.0);
     
-    vec4 worldNormal = normalize(modelToWorldMatrix * vec4(normal,0.0));
-    
-    float cosAngIncidence = dot(worldNormal, dirToLight);
+    vec4 worldNormal = normalize(worldToCameraMatrix * modelToWorldMatrix * vec4(normal,0.0));
+    vec4 light_dir = vec4(0,0,-1,0);
+
+    float cosAngIncidence = dot(worldNormal, light_dir);
     cosAngIncidence = clamp(cosAngIncidence, 0, 1);
     
     interpColor = lightIntensity * diffuseColor * cosAngIncidence;
