@@ -10,7 +10,11 @@ import numpy
 #============================================================================#
 #=================================================================== CLASS ==#
 class AbstractVector(object):
-    def __init__(self, x=0, y=0, z=0, w=0, data=None):
+    def __init__(self, x=0, y=0, z=0, w=0, other=None, data=None):
+        if other:
+            x = other.x
+            y = other.y
+            z = other.z
         if data is not None:
             self._data = data.copy()
         else:
@@ -80,7 +84,7 @@ class AbstractVector(object):
         return self
 
     def __mul__(self, other):
-        data = self._data * other
+        data = self._data * other._data
         return type(self)(data=data)
 
     def __imul__(self, other):

@@ -19,6 +19,7 @@ class Game(object):
         self.start_time = None
         self.camera = Camera()
         self.mouse_movement = core.Point(0,0)
+        self.direction_to_light = core.Vector()
 
         self.pressed_keys = set()
         self.cube = None
@@ -31,22 +32,21 @@ class Game(object):
         return (500, 500)
 
     def init(self):
-        self.cube = core.Mesh(VERTICES, INDICES, DRAW_METHOD)
-        # self.cube = core.Mesh(VERTICES, NORMALS, INDICES, DRAW_METHOD)
+        self.cube = core.Mesh(VERTICES, NORMALS, INDICES, DRAW_METHOD)
 
         self.shaders['cube'] = core.BaseShader(VERTEX_SHADER, FRAGMENT_SHADER)
         self.shaders['cube'].store_uniform_location('modelToWorldMatrix')
         self.shaders['cube'].store_uniform_location('worldToCameraMatrix')
         self.shaders['cube'].store_uniform_location('cameraToClipMatrix')
-        # self.shaders['cube'].store_uniform_location('dirToLight')
-        # self.shaders['cube'].store_uniform_location('lightIntensity')
+        self.shaders['cube'].store_uniform_location('dirToLight')
+        self.shaders['cube'].store_uniform_location('lightIntensity')
         self.shaders['cube'].store_uniform_location('diffuseColor')
-        # with self.shaders['cube'] as shader:
-        #     GL.glUniform4f(shader.uniforms['lightIntensity'], 1.0, 1.0, 1.0, 1.0)
+        with self.shaders['cube'] as shader:
+            GL.glUniform4f(shader.uniforms['lightIntensity'], 1.0, 1.0, 1.0, 1.0)
 
-        # GL.glEnable(GL.GL_CULL_FACE)
-        # GL.glCullFace(GL.GL_BACK)
-        # GL.glFrontFace(GL.GL_CW)
+        GL.glEnable(GL.GL_CULL_FACE)
+        GL.glCullFace(GL.GL_BACK)
+        GL.glFrontFace(GL.GL_CW)
 
         GL.glEnable(GL.GL_DEPTH_TEST)
         GL.glDepthMask(GL.GL_TRUE)
@@ -84,10 +84,9 @@ class Game(object):
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
         with self.shaders['cube'] as shader:
-            # dirToLight = core.Vector(-1.0, -1.0, -1.0).normal()
-            # dirToLight *= self.camera.model_view_matrix
-            # GL.glUniform4fv(shader.uniforms['dirToLight'], 1, dirToLight.tolist());
-
+            self.direction_to_light = core.Vector(other=(core.Point() * self.camera.matrix))
+            self.direction_to_light.normalize()
+            GL.glUniform4fv(shader.uniforms['dirToLight'], 1, self.direction_to_light.tolist());
 
             scale = 1.0
             trans = 10.0
@@ -168,6 +167,8 @@ class Game(object):
                 print 'mouse_movement:',str(self.mouse_movement)
                 print 'camera_mat:'
                 print str(self.camera.model_view_matrix)
+                print 'direction_to_light:', self.direction_to_light
+                print 'dot:', core.Vector(0,0,-1).dot(self.direction_to_light)
                 fps = 0
             fps += 1
 
@@ -175,67 +176,30 @@ class Game(object):
             self.handle_input()
             self.display()
 
-# FRAGMENT_SHADER = '''
-# #version 330
-
-# smooth in vec4 interpColor;
-
-# out vec4 outputColor;
-
-# void main()
-# {
-#     outputColor = interpColor;
-# }
-# '''.strip()
-
-# VERTEX_SHADER = '''
-# #version 330
-
-# layout(location = 0) in vec3 position;
-# //layout(location = 1) in vec3 normal;
-
-# smooth out vec4 interpColor;
-
-# uniform vec4 dirToLight;
-# uniform vec4 lightIntensity;
-# uniform vec4 diffuseColor;
-
-# uniform mat4 cameraToClipMatrix;
-# uniform mat4 worldToCameraMatrix;
-# uniform mat4 modelToCameraMatrix;
-
-# void main()
-# {
-#     gl_Position = cameraToClipMatrix * (modelToCameraMatrix * vec4(position, 1.0));
-    
-#     //vec4 normCamSpace = normalize(modelToCameraMatrix * vec4(normal,0.0));
-    
-#     //float cosAngIncidence = dot(normCamSpace, dirToLight);
-#     //cosAngIncidence = clamp(cosAngIncidence, 0, 1);
-    
-#     // interpColor = lightIntensity * diffuseColor * cosAngIncidence;
-#     interpColor = diffuseColor;
-# }
-# '''.strip()
-
-
 FRAGMENT_SHADER = '''
 #version 330
 
-uniform vec4 diffuseColor;
+smooth in vec4 interpColor;
 
 out vec4 outputColor;
 
 void main()
 {
-    outputColor = diffuseColor;
+    outputColor = interpColor;
 }
 '''.strip()
 
 VERTEX_SHADER = '''
 #version 330
 
-layout(location = 0) in vec4 position;
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec3 normal;
+
+smooth out vec4 interpColor;
+
+uniform vec4 dirToLight;
+uniform vec4 lightIntensity;
+uniform vec4 diffuseColor;
 
 uniform mat4 cameraToClipMatrix;
 uniform mat4 worldToCameraMatrix;
@@ -243,11 +207,17 @@ uniform mat4 modelToWorldMatrix;
 
 void main()
 {
-    vec4 temp = modelToWorldMatrix * position;
-    temp = worldToCameraMatrix * temp;
-    gl_Position = cameraToClipMatrix * temp;
+    gl_Position = cameraToClipMatrix * worldToCameraMatrix * modelToWorldMatrix * vec4(position, 1.0);
+    
+    vec4 worldNormal = normalize(modelToWorldMatrix * vec4(normal,0.0));
+    
+    float cosAngIncidence = dot(worldNormal, dirToLight);
+    cosAngIncidence = clamp(cosAngIncidence, 0, 1);
+    
+    interpColor = lightIntensity * diffuseColor * cosAngIncidence;
 }
 '''.strip()
+
 
 VERTICES = [
         0.5, 0.5, 0.5, # FRONT

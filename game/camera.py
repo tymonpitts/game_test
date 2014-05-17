@@ -19,6 +19,7 @@ class Camera(object):
 
         self._rotx = 0.0
         self._model_view_matrix = Matrix()
+        self.matrix = Matrix()
         self.model_view_matrix = Matrix()
         self.projection_matrix = Matrix()
 
@@ -86,5 +87,6 @@ class Camera(object):
         ry[2,2] = r_cy
 
         self._model_view_matrix = ry * mat * self._model_view_matrix
-        self.model_view_matrix = (rx * self._model_view_matrix).inverse()
+        self.matrix = rx * self._model_view_matrix
+        self.model_view_matrix = self.matrix.inverse()
 

@@ -35,3 +35,8 @@ class Vector(AbstractVector):
                 [self[0], self[1], self[2]])
         return type(self)(data[0], data[1], data[2])
 
+    def dot(self, other):
+        return numpy.dot(
+                [self[0], self[1], self[2]], 
+                [other[0], other[1], other[2]])
+
