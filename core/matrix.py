@@ -182,7 +182,6 @@ class MatrixStack(object):
         self.m_matrices.append(self.m_currMat.copy())
 
     def pop(self):
-        # self.m_currMat = self.m_matrices.pop()
         result = self.m_matrices.pop()
         if len(self.m_matrices):
             self.m_currMat = self.m_matrices[-1].copy()

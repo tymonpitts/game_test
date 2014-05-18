@@ -10,15 +10,21 @@ import numpy
 #============================================================================#
 #=================================================================== CLASS ==#
 class AbstractVector(object):
-    def __init__(self, x=0, y=0, z=0, w=0, other=None, data=None):
-        if other:
-            x = other.x
-            y = other.y
-            z = other.z
-        if data is not None:
-            self._data = data.copy()
+    def __init__(self, other=None):
+        if isinstance(other, numpy.matrix):
+            self._data = other
         else:
-            self._data = numpy.matrix([[x, y, z, w]], dtype=float)
+            default_values = self._default_values()
+            if other is None:
+                other = default_values
+
+            self._data = numpy.matrix([default_values], dtype=float)
+            length = min(4,other)
+            for i in xrange(length):
+                self[i] = other[i]
+
+    def _default_values(self):
+        return [0,0,0,0]
 
     def copy(self):
         return type(self)(data=self._data)
@@ -70,7 +76,7 @@ class AbstractVector(object):
     def __add__(self, other):
         data = numpy.add(self._data, other._data)
         data[3] = self.w
-        return type(self)(data=data)
+        return type(self)(data)
 
     def __iadd__(self, other):
         w = self.w
@@ -81,7 +87,7 @@ class AbstractVector(object):
     def __sub__(self, other):
         data = numpy.subtract(self._data, other._data)
         data[3] = self.w
-        return type(self)(data=data)
+        return type(self)(data)
 
     def __isub__(self, other):
         w = self.w
@@ -90,8 +96,7 @@ class AbstractVector(object):
         return self
 
     def __mul__(self, other):
-        data = self._data * other._data
-        return type(self)(data=data)
+        return type(self)(self._data * other._data)
 
     def __imul__(self, other):
         if hasattr(other, '_data'):
@@ -99,6 +104,9 @@ class AbstractVector(object):
         else:
             self._data *= other
         return self
+
+    def __len__(self):
+        return 4
 
     def __iter__(self):
         for item in self._data:

@@ -18,8 +18,7 @@ class Game(object):
         self.elapsed_time = 0.0
         self.start_time = None
         self.camera = Camera()
-        self.mouse_movement = core.Point(0,0)
-        self.direction_to_light = core.Vector()
+        self.mouse_movement = (0.0,0.0)
 
         self.pressed_keys = set()
         self.cube = None
@@ -60,7 +59,7 @@ class Game(object):
         window_center = [window_size[0] / 2, window_size[1] / 2]
 
         mouse_pos = [float(p - window_center[i]) / window_center[i] for i,p in enumerate(glfw.GetMousePos())]
-        self.mouse_movement = core.Point(mouse_pos[0], mouse_pos[1])
+        self.mouse_movement = (mouse_pos[0], mouse_pos[1])
 
         glfw.SetMousePos(*window_center)
 
@@ -162,7 +161,7 @@ class Game(object):
                     print 'fps:',fps
                     print 'mouse_movement:',str(self.mouse_movement)
                     print 'camera_mat:'
-                    print str(self.camera.matrix)
+                    print self.camera.matrix
                     fps = 0
                 fps += 1
 
