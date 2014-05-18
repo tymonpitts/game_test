@@ -10,15 +10,27 @@ import numpy
 #============================================================================#
 #=================================================================== CLASS ==#
 class Matrix(object):
-    def __init__(self, data=None):
-        if data is not None:
-            self._data = data.copy()
-        else:
+    def __init__(self, other=None):
+        from . import Quaternion
+        if other is None:
             self._data = numpy.matrix([
                     [1, 0, 0, 0],
                     [0, 1, 0, 0],
                     [0, 0, 1, 0],
                     [0, 0, 0, 1]], dtype=float)
+        elif isinstance(other, numpy.matrix):
+            self._data = other
+        elif isinstance(other, Matrix):
+            self._data = other._data.copy()
+        elif isinstance(other, Quaternion):
+            self._data = numpy.matrix([
+                    [1, 0, 0, 0],
+                    [0, 1, 0, 0],
+                    [0, 0, 1, 0],
+                    [0, 0, 0, 1]], dtype=float)
+            other.as_matrix(self)
+        else:
+            TypeError('Unable to cast %s to Matrix' % type(other))
 
     def as_quaternion(self):
         from . import Quaternion
@@ -53,11 +65,10 @@ class Matrix(object):
         return q
 
     def transpose(self):
-         data = numpy.transpose(self._data)
-         return type(self)(data=data)
+         return type(self)(numpy.transpose(self._data))
 
     def copy(self):
-        return Matrix(data=self._data)
+        return Matrix(self._data.copy())
 
     @classmethod
     def sizeof(cls):
@@ -71,7 +82,7 @@ class Matrix(object):
         return self._data.tolist()
 
     def inverse(self):
-        return type(self)(data=self._data.I)
+        return type(self)(self._data.I)
 
     def __getitem__(self, index):
         if not hasattr(index, '__iter__'):
@@ -84,8 +95,7 @@ class Matrix(object):
         self._data.itemset(index[0], index[1], value)
 
     def __mul__(self, other):
-        data = numpy.dot(self._data, other._data)
-        return Matrix(data=data)
+        return Matrix(numpy.dot(self._data, other._data))
 
     def __imul__(self, other):
         self._data = numpy.dot(self._data, other._data)

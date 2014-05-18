@@ -27,7 +27,7 @@ class AbstractVector(object):
         return [0,0,0,0]
 
     def copy(self):
-        return type(self)(data=self._data)
+        return type(self)(self._data.copy())
 
     @property
     def x(self):

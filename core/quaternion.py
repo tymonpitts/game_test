@@ -7,11 +7,69 @@ import sys
 import math
 import numpy
 
-from .abstract_vector import AbstractVector
 
 #============================================================================#
 #=================================================================== CLASS ==#
-class Quaternion(AbstractVector):
+class Quaternion(object):
+    def __init__(self, *args):
+        from . import Matrix
+        if len(args) == 0:
+            self._data = numpy.array([0,0,0,0], dtype=float)
+        elif len(args) == 1 and isinstance(args[0], Matrix):
+            self._data = numpy.array([0,0,0,0], dtype=float)
+            args[0].as_quaternion(self)
+        # elif len(args) == 1:
+        #     from .abstract_vector import AbstractVector
+        #     if isinstance(args[0], AbstractVector):
+        #         data = [item for item in args[0]]
+        #         data += [0.0]
+        #     elif len(args[0]) > 4:
+        #         data = [args[0][i] for i in xrange(4)]
+        #     else:
+        #         data = [item for item in args[0]]
+        #         data += [0.0] * (4-len(args[0]))
+        #     self._data = numpy.array(data, dtype=float)
+        else:
+            ValueError('Unable to cast args to Quaternion: %s' % args)
+
+    @property
+    def x(self):
+        return self[0]
+
+    @x.setter
+    def x(self, value):
+        self[0] = value
+
+    @property
+    def y(self):
+        return self[1]
+
+    @y.setter
+    def y(self, value):
+        self[1] = value
+
+    @property
+    def z(self):
+        return self[2]
+
+    @z.setter
+    def z(self, value):
+        self[2] = value
+
+    @property
+    def w(self):
+        return self[3]
+
+    @w.setter
+    def w(self, value):
+        self[3] = value
+
+    def __getitem__(self, index):
+        return self._data.item(index)
+
+    def __setitem__(self, index, value):
+        self._data.itemset(index, value)
+
     def length(self):
         return numpy.linalg.norm(self._data)
 
@@ -76,13 +134,20 @@ class Quaternion(AbstractVector):
         self.z = v.z * sin_angle
         return self
 
-    def as_vector(self):
-        from . import Vector
-        return Vector(self.x, self.y, self.z)
+    def as_vector(self, v=None):
+        if v is None:
+            from . import Vector
+            return Vector(self.x, self.y, self.z)
+        else:
+            v.x = self.x
+            v.y = self.y
+            v.z = self.z
+            return v
 
-    def as_matrix(self):
-        from . import Matrix
-        m = Matrix()
+    def as_matrix(self, m=None):
+        if m is None:
+            from . import Matrix
+            m = Matrix()
         x = self.x
         y = self.y
         z = self.z

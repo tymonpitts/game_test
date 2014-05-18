@@ -1,6 +1,0 @@
-
-
-- update camera with quaternions instead of matrix
-- update Vector mult to accept Quaternions
-- fix __init__ arguments for core classes
-
