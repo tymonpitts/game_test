@@ -86,7 +86,7 @@ class Game(object):
             scale = 1.0
             trans = 10.0
 
-            GL.glUniformMatrix4fv(shader.uniforms['worldToCameraMatrix'], 1, GL.GL_FALSE, self.camera.model_view_matrix.tolist())
+            GL.glUniformMatrix4fv(shader.uniforms['worldToCameraMatrix'], 1, GL.GL_FALSE, self.camera.matrix.inverse().tolist())
 
             GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
             model_mat = core.MatrixStack()
@@ -162,7 +162,7 @@ class Game(object):
                     print 'fps:',fps
                     print 'mouse_movement:',str(self.mouse_movement)
                     print 'camera_mat:'
-                    print str(self.camera.model_view_matrix)
+                    print str(self.camera.matrix)
                     fps = 0
                 fps += 1
 

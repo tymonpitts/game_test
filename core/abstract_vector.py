@@ -69,18 +69,24 @@ class AbstractVector(object):
 
     def __add__(self, other):
         data = numpy.add(self._data, other._data)
+        data[3] = self.w
         return type(self)(data=data)
 
     def __iadd__(self, other):
+        w = self.w
         self._data = numpy.add(self._data, other._data)
+        self.w = w
         return self
 
     def __sub__(self, other):
         data = numpy.subtract(self._data, other._data)
+        data[3] = self.w
         return type(self)(data=data)
 
     def __isub__(self, other):
+        w = self.w
         self._data = numpy.subtract(self._data, other._data)
+        self.w = w
         return self
 
     def __mul__(self, other):
