@@ -1,36 +1,6 @@
 
 
-- finish up basic lighting
-    - need to update Mesh class to handle normals
-- update camera 
+- update camera with quaternions instead of matrix
+- update Vector mult to accept Quaternions
+- fix __init__ arguments for core classes
 
-
-        0.5, 0.5, 0.5, # FRONT
-        0.5, -0.5, 0.5, 
-        -0.5, -0.5, 0.5, 
-        -0.5, 0.5, 0.5, 
-
-        0.5, 0.5, 0.5, # TOP
-        -0.5, 0.5, 0.5, 
-        -0.5, 0.5, -0.5, 
-        0.5, 0.5, -0.5, 
-
-        0.5, 0.5, 0.5, # RIGHT
-        0.5, 0.5, -0.5, 
-        0.5, -0.5, -0.5, 
-        0.5, -0.5, 0.5, 
-
-        0.5, 0.5, -0.5, # BACK
-        -0.5, 0.5, -0.5, 
-        -0.5, -0.5, -0.5, 
-        0.5, -0.5, -0.5, 
-
-        0.5, -0.5, 0.5, # BOTTOM
-        0.5, -0.5, -0.5, 
-        -0.5, -0.5, -0.5, 
-        -0.5, -0.5, 0.5, 
-
-        -0.5, 0.5, 0.5, # LEFT
-        -0.5, -0.5, 0.5, 
-        -0.5, -0.5, -0.5, 
-        -0.5, 0.5, -0.5, 

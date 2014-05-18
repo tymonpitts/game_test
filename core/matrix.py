@@ -20,6 +20,38 @@ class Matrix(object):
                     [0, 0, 1, 0],
                     [0, 0, 0, 1]], dtype=float)
 
+    def as_quaternion(self):
+        from . import Quaternion
+        q = Quaternion()
+        tr = self[0,0] + self[1,1] + self[2,2]
+
+        if tr > 0:
+            S = math.sqrt(tr+1.0) * 2.0 # S=4*qw 
+            q.w = 0.25 * S
+            q.x = (self[2,1] - self[1,2]) / S
+            q.y = (self[0,2] - self[2,0]) / S
+            q.z = (self[1,0] - self[0,1]) / S
+        elif self[0,0] > self[1,1] and self[0,0] > self[2,2]:
+            S = math.sqrt(1.0 + self[0,0] - self[1,1] - self[2,2]) * 2.0 # S=4*qx 
+            q.w = (self[2,1] - self[1,2]) / S
+            q.x = 0.25 * S
+            q.y = (self[0,1] + self[1,0]) / S
+            q.z = (self[0,2] + self[2,0]) / S
+        elif self[1,1] > self[2,2]:
+            S = math.sqrt(1.0 + self[1,1] - self[0,0] - self[2,2]) * 2.0 # S=4*qy
+            q.w = (self[0,2] - self[2,0]) / S
+            q.x = (self[0,1] + self[1,0]) / S
+            q.y = 0.25 * S
+            q.z = (self[1,2] + self[2,1]) / S
+        else:
+            S = math.sqrt(1.0 + self[2,2] - self[0,0] - self[1,1]) * 2.0 # S=4*qz
+            q.w = (self[1,0] - self[0,1]) / S
+            q.x = (self[0,2] + self[2,0]) / S
+            q.y = (self[1,2] + self[2,1]) / S
+            q.z = 0.25 * S
+
+        return q
+
     def transpose(self):
          data = numpy.transpose(self._data)
          return type(self)(data=data)
