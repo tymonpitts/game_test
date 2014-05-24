@@ -75,7 +75,7 @@ class AbstractVector(object):
 
     def __add__(self, other):
         data = numpy.add(self._data, other._data)
-        data[3] = self.w
+        data.itemset(0, 3, self.w)
         return type(self)(data)
 
     def __iadd__(self, other):
@@ -86,7 +86,7 @@ class AbstractVector(object):
 
     def __sub__(self, other):
         data = numpy.subtract(self._data, other._data)
-        data[3] = self.w
+        data.itemset(0, 3, self.w)
         return type(self)(data)
 
     def __isub__(self, other):
