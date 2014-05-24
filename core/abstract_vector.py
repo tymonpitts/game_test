@@ -19,7 +19,7 @@ class AbstractVector(object):
                 other = default_values
 
             self._data = numpy.matrix([default_values], dtype=float)
-            length = min(4,other)
+            length = min(4,len(other))
             for i in xrange(length):
                 self[i] = other[i]
 
@@ -111,4 +111,16 @@ class AbstractVector(object):
     def __iter__(self):
         for item in self._data:
             yield item
+
+    def __eq__(self, other):
+        try:
+            for i in xrange(len(self)):
+                if self[i] != other[i]:
+                    return False
+            return True
+        except:
+            return False
+
+    def __ne__(self, other):
+        return (not self.__eq__(other))
 
