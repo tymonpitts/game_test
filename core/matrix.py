@@ -110,6 +110,68 @@ class Matrix(object):
         result += '\t' + str(l[3]) + '\n'
         return result
 
+    def rotateX(self, fAngDeg):
+        fAngRad = math.radians(fAngDeg)
+        fCos = math.cos(fAngRad)
+        fSin = math.sin(fAngRad)
+
+        mat = Matrix()
+        mat[1,1] = fCos
+        mat[1,2] = fSin
+        mat[2,1] = -fSin
+        mat[2,2] = fCos
+
+        mat *= self
+        self._data = mat._data
+
+    def rotateY(self, fAngDeg):
+        fAngRad = math.radians(fAngDeg)
+        fCos = math.cos(fAngRad)
+        fSin = math.sin(fAngRad)
+
+        mat = Matrix()
+        mat[0,0] = fCos
+        mat[0,2] = -fSin
+        mat[2,0] = fSin
+        mat[2,2] = fCos
+
+        mat *= self
+        self._data = mat._data
+
+    def rotateZ(self, fAngDeg):
+        fAngRad = math.radians(fAngDeg)
+        fCos = math.cos(fAngRad)
+        fSin = math.sin(fAngRad)
+
+        mat = Matrix()
+        mat[0,0] = fCos
+        mat[0,1] = fSin
+        mat[1,0] = -fSin
+        mat[1,1] = fCos
+
+        mat *= self
+        self._data = mat._data
+
+    def scale(self, scaleVec):
+        if isinstance(scaleVec, float):
+            scaleVec = [scaleVec] * 3
+        scaleVec = Vector(scaleVec)
+        mat = Matrix()
+        for index in xrange(3):
+            mat[index, index] = scaleVec[index]
+
+        mat *= self
+        self._data = mat._data
+
+    def translate(self, offsetVec):
+        offsetVec = Vector(offsetVec)
+        mat = Matrix()
+        for index in xrange(3):
+            mat[3, index] = offsetVec[index]
+
+        mat *= self
+        self._data = mat._data
+
 class MatrixStack(object):
     def __init__(self):
         self.m_currMat = Matrix()
@@ -131,61 +193,23 @@ class MatrixStack(object):
         return self.m_currMat
 
     def rotateX(self, fAngDeg):
-        fAngRad = math.radians(fAngDeg)
-        fCos = math.cos(fAngRad)
-        fSin = math.sin(fAngRad)
-
-        theMat = Matrix()
-        theMat[1,1] = fCos
-        theMat[1,2] = fSin
-        theMat[2,1] = -fSin
-        theMat[2,2] = fCos
-
-        self.m_currMat = theMat * self.m_currMat
+        self.m_currMat.rotateX(fAngDeg)
         self.push()
 
     def rotateY(self, fAngDeg):
-        fAngRad = math.radians(fAngDeg)
-        fCos = math.cos(fAngRad)
-        fSin = math.sin(fAngRad)
-
-        theMat = Matrix()
-        theMat[0,0] = fCos
-        theMat[0,2] = -fSin
-        theMat[2,0] = fSin
-        theMat[2,2] = fCos
-
-        self.m_currMat = theMat * self.m_currMat
+        self.m_currMat.rotateY(fAngDeg)
         self.push()
 
     def rotateZ(self, fAngDeg):
-        fAngRad = math.radians(fAngDeg)
-        fCos = math.cos(fAngRad)
-        fSin = math.sin(fAngRad)
-
-        theMat = Matrix()
-        theMat[0,0] = fCos
-        theMat[0,1] = fSin
-        theMat[1,0] = -fSin
-        theMat[1,1] = fCos
-
-        self.m_currMat = theMat * self.m_currMat
+        self.m_currMat.rotateZ(fAngDeg)
         self.push()
 
     def scale(self, scaleVec):
-        scaleMat = Matrix()
-        for index in xrange(3):
-            scaleMat[index, index] = scaleVec[index]
-
-        self.m_currMat = scaleMat * self.m_currMat
+        self.m_currMat.scale(scaleVec)
         self.push()
 
     def translate(self, offsetVec):
-        translateMat = Matrix()
-        for index in xrange(3):
-            translateMat[3, index] = offsetVec[index]
-
-        self.m_currMat = translateMat * self.m_currMat
+        self.m_currMat.translate(offsetVec)
         self.push()
 
     def push(self):

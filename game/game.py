@@ -12,6 +12,7 @@ from OpenGL.GL.ARB import depth_clamp
 
 from .. import core
 from . import Camera
+from . import World
 
 class Game(object):
     def __init__(self):
@@ -19,6 +20,7 @@ class Game(object):
         self.start_time = None
         self.camera = Camera()
         self.mouse_movement = (0.0,0.0)
+        self.world = World()
 
         self.pressed_keys = set()
         self.cube = None
@@ -41,6 +43,8 @@ class Game(object):
         self.shaders['cube'].store_uniform_location('diffuseColor')
         with self.shaders['cube'] as shader:
             GL.glUniform4f(shader.uniforms['lightIntensity'], 1.0, 1.0, 1.0, 1.0)
+
+        self.world.generate_terrain()
 
         GL.glEnable(GL.GL_CULL_FACE)
         GL.glCullFace(GL.GL_BACK)
@@ -87,32 +91,35 @@ class Game(object):
 
             GL.glUniformMatrix4fv(shader.uniforms['worldToCameraMatrix'], 1, GL.GL_FALSE, self.camera.matrix.inverse().tolist())
 
-            GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
-            model_mat = core.MatrixStack()
-            model_mat.scale([scale, scale, scale])
-            GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, model_mat.top().tolist())
-            self.cube.render()
+            # GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
+            # model_mat = core.MatrixStack()
+            # model_mat.scale([scale, scale, scale])
+            # GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, model_mat.top().tolist())
+            # self.cube.render()
 
-            GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
-            model_mat = core.MatrixStack()
-            model_mat.translate([trans, 0.0, 0.0])
-            model_mat.scale([scale, scale, scale])
-            GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, model_mat.top().tolist())
-            self.cube.render()
+            # GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
+            # model_mat = core.MatrixStack()
+            # model_mat.translate([trans, 0.0, 0.0])
+            # model_mat.scale([scale, scale, scale])
+            # GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, model_mat.top().tolist())
+            # self.cube.render()
 
-            GL.glUniform4f(shader.uniforms['diffuseColor'], 0.0, 1.0, 0.0, 1.0)
-            model_mat = core.MatrixStack()
-            model_mat.translate([0.0, trans, 0.0])
-            model_mat.scale([scale, scale, scale])
-            GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, model_mat.top().tolist())
-            self.cube.render()
+            # GL.glUniform4f(shader.uniforms['diffuseColor'], 0.0, 1.0, 0.0, 1.0)
+            # model_mat = core.MatrixStack()
+            # model_mat.translate([0.0, trans, 0.0])
+            # model_mat.scale([scale, scale, scale])
+            # GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, model_mat.top().tolist())
+            # self.cube.render()
 
-            GL.glUniform4f(shader.uniforms['diffuseColor'], 0.0, 0.0, 1.0, 1.0)
-            model_mat = core.MatrixStack()
-            model_mat.translate([0.0, 0.0, trans])
-            model_mat.scale([scale, scale, scale])
-            GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, model_mat.top().tolist())
-            self.cube.render()
+            # GL.glUniform4f(shader.uniforms['diffuseColor'], 0.0, 0.0, 1.0, 1.0)
+            # model_mat = core.MatrixStack()
+            # model_mat.translate([0.0, 0.0, trans])
+            # model_mat.scale([scale, scale, scale])
+            # GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, model_mat.top().tolist())
+            # self.cube.render()
+
+            matrix_stack = MatrixStack()
+
 
         glfw.SwapBuffers()
         

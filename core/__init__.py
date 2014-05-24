@@ -8,4 +8,5 @@ from .vector import Vector
 
 from .shader import BaseShader
 from .mesh import Mesh
+from .octree import Octree
 
