@@ -26,10 +26,10 @@ class World(object):
                 height = int(float(size) * value)
                 for y in xrange(-size,height):
                     y = float(y) + 0.5
-                    print 'adding %s %s %s' % (x, y, z)
+                    # print 'adding %s %s %s' % (x, y, z)
                     self.octree.add_point((x,y,z), point_data=100)
-                    print 'DONE - adding %s %s %s' % (x, y, z)
+                    # print 'DONE - adding %s %s %s' % (x, y, z)
 
-    def render(self, game, shader, matrix_stack):
-        self.octree.render(game, shader, matrix_stack)
+    def render(self, game, shader):
+        self.octree.render(game, shader)
 
