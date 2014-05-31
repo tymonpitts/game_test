@@ -198,15 +198,19 @@ class OctreeLeaf(AbstractOctreeChild):
         return True
 
     def _do_render(self, game, shader, data):
+        if self._data is None:
+            return
+
         matrix = Matrix()
         matrix.translate(data['origin'])
         matrix.scale(data['size'])
         GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, matrix.tolist())
 
-        r = random.random()
-        g = random.random()
-        b = random.random()
-        GL.glUniform4f(shader.uniforms['diffuseColor'], r, g, b, 1.0)
+        # r = random.random()
+        # g = random.random()
+        # b = random.random()
+        # GL.glUniform4f(shader.uniforms['diffuseColor'], r, g, b, 1.0)
+        
         # print 'Drawing leaf:'
         # print '\t level:', data['level']
         # print '\t origin:', data['origin']
