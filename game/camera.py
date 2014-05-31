@@ -12,14 +12,14 @@ from .. import core
 #============================================================================#
 #=================================================================== CLASS ==#
 class Camera(object):
-    def __init__(self):
+    def __init__(self, position):
         self._fovy = 45.0
         self._near = 0.01
-        self._far = 100.0
+        self._far = 200.0
 
         self._roty = 0.0
         self._rotx = 0.0
-        self._trans = core.Point()
+        self._trans = core.Point(position)
         self.matrix = core.Matrix()
         self.projection_matrix = core.Matrix()
 

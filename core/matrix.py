@@ -153,6 +153,7 @@ class Matrix(object):
         self._data = mat._data
 
     def scale(self, scaleVec):
+        from . import Vector
         if isinstance(scaleVec, float):
             scaleVec = [scaleVec] * 3
         scaleVec = Vector(scaleVec)
@@ -164,6 +165,7 @@ class Matrix(object):
         self._data = mat._data
 
     def translate(self, offsetVec):
+        from . import Vector
         offsetVec = Vector(offsetVec)
         mat = Matrix()
         for index in xrange(3):

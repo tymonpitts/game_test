@@ -18,9 +18,9 @@ class Game(object):
     def __init__(self):
         self.elapsed_time = 0.0
         self.start_time = None
-        self.camera = Camera()
+        self.camera = Camera((0.0, 18, 0.0))
         self.mouse_movement = (0.0,0.0)
-        self.world = World()
+        self.world = World(16)
 
         self.pressed_keys = set()
         self.cube = None
@@ -118,8 +118,8 @@ class Game(object):
             # GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, model_mat.top().tolist())
             # self.cube.render()
 
-            matrix_stack = MatrixStack()
-
+            matrix_stack = core.MatrixStack()
+            self.world.render(self, shader, matrix_stack)
 
         glfw.SwapBuffers()
         

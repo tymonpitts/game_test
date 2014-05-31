@@ -8,6 +8,8 @@ import math
 import numpy
 import random
 
+from OpenGL import GL
+
 from . import Point
 from . import Vector
 
@@ -17,11 +19,20 @@ class AbstractOctree(object):
     def _is_leaf(self):
         return False
 
-    def _update_data(self, data):
-        data['level'] += 1
-        data['size'] *= 0.5
+    def _copy_data(self, data):
+        copied_data = {}
+        copied_data['level'] = data['level']
+        copied_data['size'] = data['size']
+        copied_data['origin'] = data['origin'].copy()
+        return copied_data
+
+    def data(self):
+        return None
 
 class AbstractOctreeParent(AbstractOctree):
+    def data(self):
+        return None
+
     def children(self):
         return self._children
 
@@ -30,6 +41,8 @@ class AbstractOctreeParent(AbstractOctree):
         index = children.index(child)
         children.remove(child)
         new_child = OctreeInterior.from_leaf(child)
+        for child in new_child.children():
+            child.set_data(self.data())
         children.insert(index, new_child)
         self._children = tuple(children)
         return new_child
@@ -47,18 +60,21 @@ class AbstractOctreeParent(AbstractOctree):
 
     def _merge(self):
         new_node = OctreeLeaf(self.parent())
+        data = self._children[0].data()
+        new_node.set_data(data)
+
+        children = list(self.parent()._children)
+        index = children.index(self)
+        children.remove(self)
+        children.insert(index, new_node)
+        self.parent()._children = tuple(children)
+        return new_node
 
     def _add_point(self, point, point_data, data):
-        origin = self._origin(data)
-        child = self._child_containing_point(point, origin)
-        child_origin = child._origin(data)
-        if point == child_origin:
-            result = child
-            child.set_data(point_data)
-        else:
-            if child._is_leaf():
-                child = self._split_leaf(child)
-            result = child._add_point(point, point_data, data)
+        self._update_data(data)
+        print '_add_point:', data['origin']
+        child = self._child_containing_point(point, data['origin'])
+        result = child._add_point(point, point_data, data)
 
         do_merge = True
         for child in self._children:
@@ -66,20 +82,44 @@ class AbstractOctreeParent(AbstractOctree):
                 do_merge = False
                 break
         if do_merge:
-            return self.parent()._merge()
+            return self._merge()
         else:
             return result
 
-    def _do_render(self, shader, matrix_stack, data):
+    def _do_render(self, game, shader, matrix_stack, data):
         for child in self._children:
-            child._render(shader, matrix_stack, {})
+            child._render(game, shader, matrix_stack, data)
 
 class AbstractOctreeChild(AbstractOctree):
     def parent(self):
         return self._parent
 
     def origin(self):
-        return self._origin({})
+        data = self._get_data()
+        return data['origin']
+
+    def _add_point(self, point, point_data, data):
+        copied_data = self._copy_data(data)
+        self._update_data(copied_data)
+        if point == copied_data['origin']:
+            self.set_data(point_data)
+            return self
+
+        new_self = self.parent()._split_leaf(self)
+        return new_self._add_point(point, point_data, data)
+
+    def _update_data(self, data):
+        data['level'] += 1
+        data['size'] *= 0.5
+
+        offset = self._offset()
+        offset *= data['size']
+        data['origin'] += offset
+
+    def _get_data(self):
+        data = self.parent()._get_data()
+        self._update_data(data)
+        return data
 
     def _offset(self):
         i = self.index()
@@ -89,25 +129,17 @@ class AbstractOctreeChild(AbstractOctree):
         offset.z = 0.5 if i&1 else -0.5
         return offset
 
-    def _origin(self, data):
-        parent_origin = self.parent()._origin(data)
-        self._update_data(data)
-        offset = self._offset()
-        size = data['size']
-        offset *= size
-        return parent_origin + offset
-
     def index(self):
         return self._parent._children.index(self)
 
-    def _render(self, shader, matrix_stack, data):
+    def _render(self, game, shader, matrix_stack, data):
         self._update_data(data)
         with matrix_stack:
             offset = self._offset()
             matrix_stack.translate(offset)
             matrix_stack.scale(0.5)
 
-            self._do_render(self, shader, matrix_stack, data)
+            self._do_render(game, shader, matrix_stack, data)
 
 class Octree(AbstractOctreeParent):
     def __init__(self, size):
@@ -118,15 +150,16 @@ class Octree(AbstractOctreeParent):
     def _merge(self):
         return self
 
+    def _get_data(self):
+        data = {}
+        self._update_data(data)
+        return data
+
     def _update_data(self, data):
         data['top'] = self
         data['level'] = 1
         data['size'] = self.size()
-
-    def _origin(self, data):
-        origin = self.origin()
-        self._update_data(data)
-        return origin
+        data['origin'] = self.origin()
 
     def origin(self):
         return Point()
@@ -137,8 +170,9 @@ class Octree(AbstractOctreeParent):
     def add_point(self, point, point_data):
         return self._add_point(Point(point), point_data, {})
 
-    def render(self, shader, matrix_stack):
-        self._do_render(shader, matrix_stack, {})
+    def render(self, game, shader, matrix_stack):
+        data = self._get_data()
+        self._do_render(game, shader, matrix_stack, data)
 
 class OctreeInterior(AbstractOctreeParent, AbstractOctreeChild):
     def __init__(self, parent):
@@ -153,18 +187,26 @@ class OctreeInterior(AbstractOctreeParent, AbstractOctreeChild):
 class OctreeLeaf(AbstractOctreeChild):
     def __init__(self, parent):
         self._parent = parent
+        self._data = None
+
+    def data(self):
+        return self._data
+
+    def set_data(self, data):
+        self._data = data
+        # TODO: possibly merge here
 
     def _is_leaf(self):
         return True
 
-    def _do_render(self, shader, matrix_stack, data):
+    def _do_render(self, game, shader, matrix_stack, data):
         r = random.randrange(1.0)
         g = random.randrange(1.0)
         b = random.randrange(1.0)
         GL.glUniform4f(shader.uniforms['diffuseColor'], r, g, b, 1.0)
 
         GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, matrix_stack.top().tolist())
-        self.cube.render()
+        game.cube.render()
 
 # class Octree(object):
 #     def __init__(self, parent=None):
