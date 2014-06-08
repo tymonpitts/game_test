@@ -211,18 +211,18 @@ uniform mat4 modelToWorldMatrix;
 
 void main()
 {
-    gl_Position = cameraToClipMatrix * worldToCameraMatrix * modelToWorldMatrix * vec4(position, 1.0);
-    
-    vec4 worldNormal = normalize(worldToCameraMatrix * modelToWorldMatrix * vec4(normal,0.0));
-    vec4 light_dir = vec4(0,0,-1,0);
+    vec4 position_in_world = modelToWorldMatrix * vec4(position, 1.0);
+    gl_Position = cameraToClipMatrix * worldToCameraMatrix * position_in_world;
 
-    float cosAngIncidence = dot(worldNormal, light_dir);
+    vec4 normal_in_world = normalize(modelToWorldMatrix * vec4(normal, 0.0));
+    vec4 cam_position = normalize(inverse(worldToCameraMatrix) * vec4(0.0, 0.0, 0.0, 1.0));
+
+    float cosAngIncidence = dot(normal_in_world, cam_position);
     cosAngIncidence = clamp(cosAngIncidence, 0, 1);
     
     interpColor = lightIntensity * diffuseColor * cosAngIncidence;
 }
 '''.strip()
-
 
 VERTICES = [
         0.5, 0.5, 0.5, # FRONT
