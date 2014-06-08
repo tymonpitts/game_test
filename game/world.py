@@ -73,6 +73,7 @@ class World(object):
         stride = size / 2
         values[0][0] = 0.0
 
+        random.seed(1234)
         while stride:
             # print '-------------------------'
             grid = [['.' for j in xrange(size+1)] for i in xrange(size+1)]
