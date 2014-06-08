@@ -11,6 +11,7 @@ from OpenGL import GL
 from OpenGL import GLE
 from OpenGL.GL.ARB import depth_clamp
 
+from .. import data
 from .. import core
 from . import Camera
 from . import World
@@ -36,7 +37,7 @@ class Game(object):
         return (500, 500)
 
     def init(self):
-        self.cube = core.Mesh(VERTICES, NORMALS, INDICES, DRAW_METHOD)
+        self.cube = core.Mesh(data.cube.VERTICES, data.cube.NORMALS, data.cube.INDICES, data.cube.DRAW_METHOD)
 
         self.shaders['cube'] = core.BaseShader(VERTEX_SHADER, FRAGMENT_SHADER)
         self.shaders['cube'].store_uniform_location('modelToWorldMatrix')
@@ -85,7 +86,6 @@ class Game(object):
 
     def display(self):
         GL.glClearColor(0.5, 0.5, 0.5, 0.0)
-        # GL.glClearColor(0.0, 0.0, 0.0, 0.0)
         GL.glClearDepth(1.0)
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
@@ -168,9 +168,9 @@ class Game(object):
                 if (cur_time - last_fps_time) >= 1.0:
                     last_fps_time = cur_time
                     print 'fps:',fps
-                    print 'mouse_movement:',str(self.mouse_movement)
-                    print 'camera_mat:'
-                    print self.camera.matrix
+                    # print 'mouse_movement:',str(self.mouse_movement)
+                    # print 'camera_mat:'
+                    # print self.camera.matrix
                     fps = 0
                 fps += 1
 
@@ -223,82 +223,4 @@ void main()
     interpColor = lightIntensity * diffuseColor * cosAngIncidence;
 }
 '''.strip()
-
-VERTICES = [
-        0.5, 0.5, 0.5, # FRONT
-        0.5, -0.5, 0.5, 
-        -0.5, -0.5, 0.5, 
-        -0.5, 0.5, 0.5, 
-
-        0.5, 0.5, 0.5, # TOP
-        -0.5, 0.5, 0.5, 
-        -0.5, 0.5, -0.5, 
-        0.5, 0.5, -0.5, 
-
-        0.5, 0.5, 0.5, # RIGHT
-        0.5, 0.5, -0.5, 
-        0.5, -0.5, -0.5, 
-        0.5, -0.5, 0.5, 
-
-        0.5, 0.5, -0.5, # BACK
-        -0.5, 0.5, -0.5, 
-        -0.5, -0.5, -0.5, 
-        0.5, -0.5, -0.5, 
-
-        0.5, -0.5, 0.5, # BOTTOM
-        0.5, -0.5, -0.5, 
-        -0.5, -0.5, -0.5, 
-        -0.5, -0.5, 0.5, 
-
-        -0.5, 0.5, 0.5, # LEFT
-        -0.5, -0.5, 0.5, 
-        -0.5, -0.5, -0.5, 
-        -0.5, 0.5, -0.5, 
-        ]
-NORMALS = [
-        0.0, 0.0, 1.0, # FRONT
-        0.0, 0.0, 1.0, 
-        0.0, 0.0, 1.0, 
-        0.0, 0.0, 1.0, 
-
-        0.0, 1.0, 0.0, # TOP
-        0.0, 1.0, 0.0, 
-        0.0, 1.0, 0.0, 
-        0.0, 1.0, 0.0, 
-
-        1.0, 0.0, 0.0, # RIGHT
-        1.0, 0.0, 0.0,
-        1.0, 0.0, 0.0,
-        1.0, 0.0, 0.0,
-
-        0.0, 0.0, -1.0, # BACK
-        0.0, 0.0, -1.0, 
-        0.0, 0.0, -1.0, 
-        0.0, 0.0, -1.0, 
-
-        0.0, -1.0, 0.0, # BOTTOM
-        0.0, -1.0, 0.0, 
-        0.0, -1.0, 0.0, 
-        0.0, -1.0, 0.0, 
-
-        -1.0, 0.0, 0.0, # LEFT
-        -1.0, 0.0, 0.0, 
-        -1.0, 0.0, 0.0, 
-        -1.0, 0.0, 0.0, 
-        ]
-DRAW_METHOD = GL.GL_TRIANGLES
-INDICES = [
-        0, 1, 2, 
-        2, 3, 0, 
-        4, 5, 6, 
-        6, 7, 4, 
-        8, 9, 10, 
-        10, 11, 8, 
-        12, 13, 14, 
-        14, 15, 12, 
-        16, 17, 18, 
-        18, 19, 16, 
-        20, 21, 22, 
-        22, 23, 20, 
-        ]
 
