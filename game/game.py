@@ -20,9 +20,10 @@ class Game(object):
         self.elapsed_time = 0.0
         self.start_time = None
         # self.camera = Camera((0.0, 0.0, 0.0))
-        self.camera = Camera((0.0, 40, -64.0))
         self.mouse_movement = (0.0,0.0)
-        self.world = World(32)
+        size = 16
+        self.world = World(size)
+        self.camera = Camera((0.0, size+size/8, -size*2))
 
         self.pressed_keys = set()
         self.cube = None
@@ -90,9 +91,6 @@ class Game(object):
 
         random.seed(1121327837)
         with self.shaders['cube'] as shader:
-            scale = 1.0
-            trans = 10.0
-
             GL.glUniformMatrix4fv(shader.uniforms['worldToCameraMatrix'], 1, GL.GL_FALSE, self.camera.matrix.inverse().tolist())
 
             # GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
