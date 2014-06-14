@@ -93,6 +93,24 @@ class AbstractOctreeParent(AbstractOctree):
             child_data = self._copy_data(data)
             child._render(game, shader, child_data)
 
+    def _generate_mesh(self, data):
+        self._update_data(data)
+        verts = []
+        normals = []
+        indices = []
+        for child in self._children:
+            child_data = data.copy()
+            child_data['origin'] = child_data['origin'].copy()
+            result = child._generate_mesh(child_data)
+            if result is None:
+                continue
+            c_verts, c_normals, c_indices = result
+            data['index_offset'] += len(c_verts)/3
+            verts.extend(c_verts)
+            normals.extend(c_normals)
+            indices.extend(c_indices)
+        return verts, normals, indices
+
 class AbstractOctreeChild(AbstractOctree):
     def parent(self):
         return self._parent
@@ -172,6 +190,15 @@ class Octree(AbstractOctreeParent):
         data = self._get_data()
         self._do_render(game, shader, data)
 
+    def generate_mesh(self):
+        from ..data import cube
+        from . import Mesh
+        data = self._get_data()
+        data['cube'] = cube
+        data['index_offset'] = 0
+        verts, normals, indices = self._generate_mesh(data)
+        return Mesh(verts, normals, indices, GL.GL_TRIANGLES)
+
 class OctreeInterior(AbstractOctreeParent, AbstractOctreeChild):
     def __init__(self, parent):
         self._parent = parent
@@ -210,7 +237,7 @@ class OctreeLeaf(AbstractOctreeChild):
         # g = random.random()
         # b = random.random()
         # GL.glUniform4f(shader.uniforms['diffuseColor'], r, g, b, 1.0)
-        
+
         # print 'Drawing leaf:'
         # print '\t level:', data['level']
         # print '\t origin:', data['origin']
@@ -220,4 +247,22 @@ class OctreeLeaf(AbstractOctreeChild):
         # print matrix
 
         game.cube.render()
+
+    def _generate_mesh(self, data):
+        if not self.data():
+            return
+        self._update_data(data)
+
+        VERTS = data['cube'].VERTICES
+        verts = []
+        count = 0
+        for i in xrange(0, len(VERTS), 3):
+            vert = data['origin'] + Vector([VERTS[i], VERTS[i+1], VERTS[i+2]]) * data['size']
+            verts.append(vert.x)
+            verts.append(vert.y)
+            verts.append(vert.z)
+        normals = data['cube'].NORMALS
+        indices = [i + data['index_offset'] for i in data['cube'].INDICES]
+        return verts, normals, indices
+
 

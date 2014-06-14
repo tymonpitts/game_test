@@ -22,7 +22,7 @@ class Game(object):
         self.start_time = None
         # self.camera = Camera((0.0, 0.0, 0.0))
         self.mouse_movement = (0.0,0.0)
-        size = 16
+        size = 32
         self.world = World(size)
         self.camera = Camera((0.0, size+size/8, -size*2))
 
@@ -93,6 +93,8 @@ class Game(object):
         with self.shaders['cube'] as shader:
             GL.glUniformMatrix4fv(shader.uniforms['worldToCameraMatrix'], 1, GL.GL_FALSE, self.camera.matrix.inverse().tolist())
 
+            # scale = 1
+            # trans = 5
             # GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
             # model_mat = core.MatrixStack()
             # model_mat.scale([scale, scale, scale])
@@ -120,7 +122,7 @@ class Game(object):
             # GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, model_mat.top().tolist())
             # self.cube.render()
 
-            GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 1.0, 0.5, 1.0)
+            GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, core.Matrix().tolist())
             self.world.render(self, shader)
 
         glfw.SwapBuffers()

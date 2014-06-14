@@ -9,6 +9,8 @@ import numpy
 import glfw
 import noise
 
+from OpenGL import GL
+
 from .. import core
 
 #============================================================================#
@@ -63,6 +65,7 @@ def avg_diamond_vals(i, j, stride, size, values):
 class World(object):
     def __init__(self, size):
         self.octree = core.Octree(size)
+        self.mesh = None
 
     def generate_terrain(self):
         size = int(self.octree.size())
@@ -134,7 +137,17 @@ class World(object):
                 for y in xrange(-half_size+1, height+1):
                     y = float(y) - 0.5
                     self.octree.add_point((x,y,z), 100)
+                # y = float(height) - 0.5
+                # self.octree.add_point((x,y,z), 100)
+
+        self.generate_terrain_mesh()
+
+    def generate_terrain_mesh(self):
+        self.mesh = self.octree.generate_mesh()
 
     def render(self, game, shader):
-        self.octree.render(game, shader)
+        GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 1.0, 0.5, 1.0)
+        self.mesh.render()
+        # GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 1.0, 1.0)
+        # self.octree.render(game, shader)
 

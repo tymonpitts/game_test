@@ -96,13 +96,27 @@ class AbstractVector(object):
         return self
 
     def __mul__(self, other):
-        return type(self)(self._data * other._data)
+        result = type(self)(self._data.copy())
+        result *= other
+        return result
 
     def __imul__(self, other):
         if hasattr(other, '_data'):
             self._data *= other._data
         else:
             self._data *= other
+        return self
+
+    def __div__(self, other):
+        result = type(self)(self._data.copy())
+        result /= other
+        return result
+
+    def __idiv__(self, other):
+        if hasattr(other, '_data'):
+            self._data /= other._data
+        else:
+            self._data /= other
         return self
 
     def __len__(self):
