@@ -26,10 +26,10 @@ class Mesh(object):
 
         indexBufferObject = GL.glGenBuffers(1)
         GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, indexBufferObject)
-        array_type = (GL.GLushort*len(self.indices))
+        array_type = (GL.GLuint*len(self.indices))
         GL.glBufferData(
                 GL.GL_ELEMENT_ARRAY_BUFFER,
-                len(self.indices)*SHORT_SIZE,
+                len(self.indices)*FLOAT_SIZE,
                 array_type(*self.indices),
                 GL.GL_STATIC_DRAW)
 
@@ -37,5 +37,5 @@ class Mesh(object):
 
     def render(self):
         GL.glBindVertexArray(self.vao)
-        GL.glDrawElements(self.draw_method, len(self.indices), GL.GL_UNSIGNED_SHORT, None)
+        GL.glDrawElements(self.draw_method, len(self.indices), GL.GL_UNSIGNED_INT, None)
         GL.glBindVertexArray(0)
