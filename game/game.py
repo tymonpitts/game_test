@@ -22,7 +22,7 @@ class Game(object):
         self.start_time = None
         # self.camera = Camera((0.0, 0.0, 0.0))
         self.mouse_movement = (0.0,0.0)
-        size = 32
+        size = 64
         self.world = World(size)
         self.camera = Camera((0.0, size+size/8, -size*2))
 
@@ -169,7 +169,7 @@ class Game(object):
 
                 if (cur_time - last_fps_time) >= 1.0:
                     last_fps_time = cur_time
-                    print 'fps:',fps
+                    # print 'fps:',fps
                     # print 'mouse_movement:',str(self.mouse_movement)
                     # print 'camera_mat:'
                     # print self.camera.matrix

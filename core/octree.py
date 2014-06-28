@@ -40,6 +40,24 @@ class AbstractOctreeParent(AbstractOctree):
     def children(self):
         return self._children
 
+    def _get_height(self, x, z, data):
+        self._update_data(data)
+        origin = data['origin']
+
+        index1 = 0
+        if x >= origin.x: index1 |= 4
+        if z >= origin.z: index1 |= 1
+        index2 = index1
+        index1 |= 2
+
+        child1 = self.children()[index1]
+        height = child1._get_height(x,z,self._copy_data(data))
+        if height is not None:
+            return height
+
+        child2 = self.children()[index2]
+        return child2._get_height(x,z,self._copy_data(data))
+
     def _split_leaf(self, child):
         children = list(self.children())
         index = children.index(child)
@@ -101,9 +119,7 @@ class AbstractOctreeParent(AbstractOctree):
         normals = []
         indices = []
         for child in self._children:
-            child_data = data.copy()
-            child_data['origin'] = child_data['origin'].copy()
-            result = child._generate_mesh(child_data)
+            result = child._generate_mesh(self._copy_data(data))
             if result is None:
                 continue
             c_verts, c_normals, c_indices = result
@@ -302,8 +318,8 @@ class Octree(AbstractOctreeParent):
         values = values[:-1, :-1]
         self._init_from_height_map(values, {})
 
-    # def get_height(self, x, z):
-    #     pass
+    def get_height(self, x, z):
+        return self._get_height(x,z,{})
 
 class OctreeInterior(AbstractOctreeParent, AbstractOctreeChild):
     def __init__(self, parent):
@@ -326,6 +342,12 @@ class OctreeLeaf(AbstractOctreeChild):
     def set_data(self, data):
         self._data = data
         # TODO: possibly merge here
+
+    def _get_height(self, x, z, data):
+        if not self.data():
+            return None
+        self._update_data(data)
+        return data['origin'].y+0.5
 
     def _is_leaf(self):
         return True

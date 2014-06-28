@@ -83,15 +83,11 @@ class World(object):
 
         size = int(self.octree.size())
         values = numpy.zeros((size+1, size+1), dtype=float)
-        # values = numpy.ndarray((size+1, size+1), dtype=float)
         sea_level = 0.0
         ratio = 0.8
         scale = float(size) / 8.0
         stride = size / 2
-        values[0][0] = 0.0
 
-        print 'size: %s' % size
-        print 'stride: %s' % stride
         # self._print_values(values)
 
         random.seed(1234)
@@ -185,10 +181,13 @@ class World(object):
         #         # self.octree.add_point((x,y,z), 100)
         self.octree.initialize_from_height_map(values)
 
+        print 'adding points time:', (time.time() - stime)
 
+
+        # stime = time.time()
         # start_x = -(self.octree.size() / 2)
         # start_z = -(self.octree.size() / 2)
-        # for x, row in enumerate(self._values[:-1]):
+        # for x, row in enumerate(values[:-1]):
         #     x = start_x + float(x) + 0.5
         #     for z, y in enumerate(row[:-1]):
         #         z = start_z + float(z) + 0.5
@@ -197,9 +196,42 @@ class World(object):
         #         if y > top or y <= bottom:
         #             print '(%s, %s): y=%f, top=%s, bottom=%s' % (x,z,y,top,bottom)
 
-        # self._print_values(values)
 
-        print 'adding points time:', (time.time() - stime)
+
+        # from ..data import cube
+        # from ..core import Mesh
+        # index_offset = 0
+        # verts = []
+        # normals = []
+        # indices = []
+        # start_x = -(self.octree.size() / 2)
+        # start_z = -(self.octree.size() / 2)
+        # for x, row in enumerate(values[:-1]):
+        #     x = start_x + float(x) + 0.5
+        #     for z, y in enumerate(row[:-1]):
+        #         z = start_z + float(z) + 0.5
+
+        #         # VERTS = cube.VERTICES
+        #         # for i in xrange(12, 24, 3):
+        #         #     verts.append(x+VERTS[i])
+        #         #     verts.append(y+VERTS[i+1])
+        #         #     verts.append(z+VERTS[i+2])
+        #         # normals += cube.NORMALS[12:24]
+        #         # faces = [0,1,3,2,3,1]
+        #         # indices += [i + index_offset for i in faces]
+        #         # index_offset += 4
+
+        #         VERTS = cube.VERTICES
+        #         for i in xrange(0, len(VERTS), 3):
+        #             verts.append(x+VERTS[i])
+        #             verts.append(y+VERTS[i+1])
+        #             verts.append(z+VERTS[i+2])
+        #         normals += cube.NORMALS
+        #         indices += [i + index_offset for i in cube.INDICES]
+        #         index_offset += len(VERTS)/3
+
+        # self._debug_mesh = Mesh(verts, normals, indices, GL.GL_TRIANGLES)
+        # print 'debugging time:', (time.time() - stime)
 
         stime = time.time()
         self.generate_terrain_mesh()
@@ -209,9 +241,13 @@ class World(object):
         self.mesh = self.octree.generate_mesh()
 
     def render(self, game, shader):
-        GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 1.0, 0.5, 0.5)
+        GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 1.0, 0.5, 1.0)
         self.mesh.render()
+
         # GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 1.0, 1.0)
         # self.octree.render(game, shader)
+
+        # GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
+        # self._debug_mesh.render()
 
 
