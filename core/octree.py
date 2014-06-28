@@ -14,6 +14,8 @@ from . import Point
 from . import Vector
 from . import Matrix
 
+from .logger import log, increase_tab, decrease_tab, Logger
+
 #============================================================================#
 #=================================================================== CLASS ==#
 class AbstractOctree(object):
@@ -111,6 +113,93 @@ class AbstractOctreeParent(AbstractOctree):
             indices.extend(c_indices)
         return verts, normals, indices
 
+    def _init_column_from_height_map(self, values, indices, min_height, max_height, origin, data):
+        max_ = values.max()
+        min_ = values.min()
+        all_leaf = (len(values) == 1)
+
+        # log('min: %s' % min_)
+        # log('max: %s' % max_)
+
+        # handle cases where both children are either solid or empty
+        #
+        if min_ > max_height:
+            self._children[indices[0]] = OctreeLeaf(self, 1)
+            self._children[indices[1]] = OctreeLeaf(self, 1)
+            # log('all solid')
+            return
+        elif max_ <= min_height:
+            self._children[indices[0]] = OctreeLeaf(self, 0)
+            self._children[indices[1]] = OctreeLeaf(self, 0)
+            # log('all empty')
+            return
+
+        # handle top
+        #
+        if max_ <= origin:
+            self._children[indices[0]] = OctreeLeaf(self, 0)
+            # log('top empty')
+        elif all_leaf:
+            self._children[indices[0]] = OctreeLeaf(self, 1)
+            # log('top solid')
+        else:
+            # log('top split')
+            self._children[indices[0]] = OctreeInterior(self)
+            self._children[indices[0]]._init_from_height_map(values, self._copy_data(data))
+
+        # handle bottom
+        #
+        if min_ > origin or all_leaf:
+            self._children[indices[1]] = OctreeLeaf(self, 1)
+            # log('bottom solid')
+        else:
+            # log('bottom split')
+            self._children[indices[1]] = OctreeInterior(self)
+            self._children[indices[1]]._init_from_height_map(values, self._copy_data(data))
+
+    def _init_from_height_map(self, values, data):
+        # gather data to initialize each column individually
+        #
+        self._children = [None] * 8
+        self._update_data(data)
+        full_size = len(values)
+        size = full_size / 2
+        origin = data['origin'].y
+        min_height = origin - (data['size']/2)
+        max_height = origin + (data['size']/2)
+
+        """
+        x o
+        o o
+        """
+        v = values[:size, :size]
+        indices = (2, 0) # top bottom
+        self._init_column_from_height_map(v, indices, min_height, max_height, origin, data)
+
+        """
+        o x
+        o o
+        """
+        v = values[size:full_size, :size]
+        indices = (6, 4) # top bottom
+        self._init_column_from_height_map(v, indices, min_height, max_height, origin, data)
+
+        """
+        o o
+        x o
+        """
+        v = values[:size, size:full_size]
+        indices = (3, 1) # top bottom
+        self._init_column_from_height_map(v, indices, min_height, max_height, origin, data)
+
+        """
+        o o
+        o x
+        """
+        v = values[size:full_size, size:full_size]
+        indices = (7, 5) # top bottom
+        self._init_column_from_height_map(v, indices, min_height, max_height, origin, data)
+
 class AbstractOctreeChild(AbstractOctree):
     def parent(self):
         return self._parent
@@ -158,6 +247,16 @@ class AbstractOctreeChild(AbstractOctree):
         self._do_render(game, shader, data)
 
 class Octree(AbstractOctreeParent):
+    """
+
+    Child indices:
+        top:
+            2 6
+            3 7
+        bottom:
+            0 4
+            1 5
+    """
     def __init__(self, size):
         super(Octree, self).__init__()
         self._size = size
@@ -199,10 +298,17 @@ class Octree(AbstractOctreeParent):
         verts, normals, indices = self._generate_mesh(data)
         return Mesh(verts, normals, indices, GL.GL_TRIANGLES)
 
+    def initialize_from_height_map(self, values):
+        values = values[:-1, :-1]
+        self._init_from_height_map(values, {})
+
+    # def get_height(self, x, z):
+    #     pass
+
 class OctreeInterior(AbstractOctreeParent, AbstractOctreeChild):
     def __init__(self, parent):
         self._parent = parent
-        self._children = tuple([OctreeLeaf(self) for i in xrange(8)])
+        # self._children = tuple([OctreeLeaf(self) for i in xrange(8)])
 
     @classmethod
     def from_leaf(cls, leaf):
@@ -210,9 +316,9 @@ class OctreeInterior(AbstractOctreeParent, AbstractOctreeChild):
         return self
 
 class OctreeLeaf(AbstractOctreeChild):
-    def __init__(self, parent):
+    def __init__(self, parent, data=None):
         self._parent = parent
-        self._data = None
+        self._data = data
 
     def data(self):
         return self._data
