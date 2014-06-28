@@ -31,9 +31,9 @@ def log(message, new_line=True):
     logger = Logger(message)
     logger.log(new_line=new_line)
 
-def increase_tab(self):
+def increase_tab():
     Logger.increase_tab()
 
-def decrease_tab(self):
+def decrease_tab():
     Logger.decrease_tab()
 
