@@ -23,10 +23,7 @@ class AbstractOctree(object):
         return False
 
     def _copy_data(self, data):
-        copied_data = {}
-        copied_data['top'] = data['top']
-        copied_data['level'] = data['level']
-        copied_data['size'] = data['size']
+        copied_data = data.copy()
         copied_data['origin'] = data['origin'].copy()
         return copied_data
 
@@ -119,7 +116,8 @@ class AbstractOctreeParent(AbstractOctree):
         normals = []
         indices = []
         for child in self._children:
-            result = child._generate_mesh(self._copy_data(data))
+            child_data = self._copy_data(data)
+            result = child._generate_mesh(child_data)
             if result is None:
                 continue
             c_verts, c_normals, c_indices = result
@@ -383,12 +381,16 @@ class OctreeLeaf(AbstractOctreeChild):
 
         VERTS = data['cube'].VERTICES
         verts = []
-        count = 0
+        origin = data['origin']
+        size = data['size']
         for i in xrange(0, len(VERTS), 3):
-            vert = data['origin'] + Vector([VERTS[i], VERTS[i+1], VERTS[i+2]]) * data['size']
-            verts.append(vert.x)
-            verts.append(vert.y)
-            verts.append(vert.z)
+            # vert = origin + Vector([VERTS[i], VERTS[i+1], VERTS[i+2]]) * size
+            # verts.append(vert.x)
+            # verts.append(vert.y)
+            # verts.append(vert.z)
+            verts.append(origin.x + VERTS[i] * size)
+            verts.append(origin.y + VERTS[i+1] * size)
+            verts.append(origin.z + VERTS[i+2] * size)
         normals = data['cube'].NORMALS
         indices = [i + data['index_offset'] for i in data['cube'].INDICES]
         return verts, normals, indices
