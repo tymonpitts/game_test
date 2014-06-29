@@ -70,52 +70,29 @@ class World(object):
         self.octree = core.Octree(size)
         self.mesh = None
 
-    def _print_values(self, values):
-        with Logger('values:'):
-            for row in values[:-1]:
-                message = ''
-                for v in row[:-1]:
-                    message += '%f ' % v
-                log(message)
-
     def generate_terrain(self):
+        """generates a height map using the diamond-square algorithm
+        and then assembles an Octree using the height map
+        """
         stime = time.time()
 
         size = int(self.octree.size())
         values = numpy.zeros((size+1, size+1), dtype=float)
         sea_level = 0.0
-        ratio = 0.8
+        ratio = 0.5
         scale = float(size) / 8.0
         stride = size / 2
 
-        # self._print_values(values)
-
         random.seed(1234)
         while stride:
-            # print '-------------------------'
-            grid = [['.' for j in xrange(size+1)] for i in xrange(size+1)]
-
+            # perform 'square' step
+            #
             for i in xrange(stride, size, stride*2):
                 for j in xrange(stride, size, stride*2):
-                    grid[i][j] = 'x'
-                    fr = fractal_rand()
-                    asv = avg_square_vals(i, j, stride, values)
-                    values[i][j] = scale * fr + asv
-                    # values[i][j] = scale * fractal_rand() + avg_square_vals(i, j, stride, values)
+                    values[i][j] = scale * fractal_rand() + avg_square_vals(i, j, stride, values)
 
-                    # log('fr: %s' % fr)
-                    # log('asv: %s' % asv)
-                    # log('values[%s][%s]: %s' % (i, j, values[i][j]))
-                    # log('')
-
-            # for row in grid:
-            #     for char in row:
-            #         print char,
-            #     print
-            # print
-
-            grid = [['.' for j in xrange(size+1)] for i in xrange(size+1)]
-
+            # perform 'diamond' step
+            #
             oddline = False
             for i in xrange(0, size, stride):
                 oddline = (oddline is False)
@@ -123,67 +100,24 @@ class World(object):
                 if oddline:
                     start = stride
                 for j in xrange(start, size, stride*2):
-                    grid[i][j] = 'x'
-                    fr = fractal_rand()
-                    adv = avg_diamond_vals(i, j, stride, size, values)
-                    values[i][j] = scale * fr + adv
-                    # values[i][j] = scale * fractal_rand() + avg_diamond_vals(i, j, stride, size, values)
-
-                    # log('fr: %s' % fr)
-                    # log('adv: %s' % adv)
-                    # log('values[%s][%s]: %s' % (i, j, values[i][j]))
-                    # log('')
+                    values[i][j] = scale * fractal_rand() + avg_diamond_vals(i, j, stride, size, values)
 
                     if i == 0:
-                        grid[size][j] = 'x'
                         values[size][j] = values[i][j]
                     if j == 0:
-                        grid[i][size] = 'x'
                         values[i][size] = values[i][j]
-
-            # self._print_values(values)
-            # log('')
-
-            # for row in grid:
-            #     for char in row:
-            #         print char,
-            #     print
-            # print
 
             scale *= ratio
             stride >>= 1
 
-        # for row in values:
-        #     for v in row:
-        #         print '%5f' % v,
-        #     print
-        # print
-
         print 'generation time:', (time.time() - stime)
 
-
-        # self._print_values(values)
-
         stime = time.time()
-
-        # half_size = size / 2
-        # for i in xrange(1, size+1):
-        #     x = float(i) - float(half_size) - 0.5
-        #     for j in xrange(1, size+1):
-        #         z = float(j) - float(half_size) - 0.5
-        #         v = avg_vals(i, j, values) * (float(size) / 8.0)
-        #         height = int(round(v))
-        #         height = clamp(height, -half_size+1, half_size)
-        #         for y in xrange(-half_size+1, height+1):
-        #             y = float(y) - 0.5
-        #             self.octree.add_point((x,y,z), 100)
-        #         # y = float(height) - 0.5
-        #         # self.octree.add_point((x,y,z), 100)
         self.octree.initialize_from_height_map(values)
-
         print 'adding points time:', (time.time() - stime)
 
-
+        # # create a debug mesh that represents the heightmap
+        # #
         # stime = time.time()
         # start_x = -(self.octree.size() / 2)
         # start_z = -(self.octree.size() / 2)
@@ -244,9 +178,8 @@ class World(object):
         GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 1.0, 0.5, 1.0)
         self.mesh.render()
 
-        # GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 1.0, 1.0)
-        # self.octree.render(game, shader)
-
+        # # render the debug mesh
+        # #
         # GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
         # self._debug_mesh.render()
 
