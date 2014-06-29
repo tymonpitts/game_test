@@ -44,9 +44,12 @@ class Game(object):
         self.shaders['cube'].store_uniform_location('worldToCameraMatrix')
         self.shaders['cube'].store_uniform_location('cameraToClipMatrix')
         self.shaders['cube'].store_uniform_location('lightIntensity')
+        self.shaders['cube'].store_uniform_location('ambientIntensity')
         self.shaders['cube'].store_uniform_location('diffuseColor')
+        self.shaders['cube'].store_uniform_location('dirToLight')
         with self.shaders['cube'] as shader:
-            GL.glUniform4f(shader.uniforms['lightIntensity'], 1.0, 1.0, 1.0, 1.0)
+            GL.glUniform4f(shader.uniforms['lightIntensity'], 0.8, 0.8, 0.8, 1.0)
+            GL.glUniform4f(shader.uniforms['ambientIntensity'], 0.2, 0.2, 0.2, 1.0)
 
         self.world.generate_terrain()
 
@@ -91,7 +94,15 @@ class Game(object):
 
         random.seed(1121327837)
         with self.shaders['cube'] as shader:
-            GL.glUniformMatrix4fv(shader.uniforms['worldToCameraMatrix'], 1, GL.GL_FALSE, self.camera.matrix.inverse().tolist())
+            i_cam_mat = self.camera.matrix.inverse()
+            GL.glUniformMatrix4fv(shader.uniforms['worldToCameraMatrix'], 1, GL.GL_FALSE, i_cam_mat.tolist())
+
+            light_dir = core.Vector([0.1, 1.0, 0.5])
+            light_dir.normalize()
+            light_dir *= i_cam_mat
+            GL.glUniform4fv(shader.uniforms['dirToLight'], 1, light_dir.tolist())
+
+
 
             # scale = 1
             # trans = 5
@@ -196,6 +207,40 @@ void main()
 }
 '''.strip()
 
+# # light from camera
+# #
+# VERTEX_SHADER = '''
+# #version 330
+
+# layout(location = 0) in vec3 position;
+# layout(location = 1) in vec3 normal;
+
+# smooth out vec4 interpColor;
+
+# uniform vec4 lightIntensity;
+# uniform vec4 diffuseColor;
+
+# uniform mat4 cameraToClipMatrix;
+# uniform mat4 worldToCameraMatrix;
+# uniform mat4 modelToWorldMatrix;
+
+# void main()
+# {
+#     vec4 position_in_world = modelToWorldMatrix * vec4(position, 1.0);
+#     gl_Position = cameraToClipMatrix * worldToCameraMatrix * position_in_world;
+
+#     vec4 normal_in_world = normalize(modelToWorldMatrix * vec4(normal, 0.0));
+#     vec4 cam_position = normalize(inverse(worldToCameraMatrix) * vec4(0.0, 0.0, 0.0, 1.0));
+
+#     float cosAngIncidence = dot(normal_in_world, cam_position);
+#     cosAngIncidence = clamp(cosAngIncidence, 0, 1);
+    
+#     interpColor = lightIntensity * diffuseColor * cosAngIncidence;
+# }
+# '''.strip()
+
+# directional light with ambient lighting
+#
 VERTEX_SHADER = '''
 #version 330
 
@@ -205,7 +250,9 @@ layout(location = 1) in vec3 normal;
 smooth out vec4 interpColor;
 
 uniform vec4 lightIntensity;
+uniform vec4 ambientIntensity;
 uniform vec4 diffuseColor;
+uniform vec4 dirToLight;
 
 uniform mat4 cameraToClipMatrix;
 uniform mat4 worldToCameraMatrix;
@@ -213,16 +260,17 @@ uniform mat4 modelToWorldMatrix;
 
 void main()
 {
-    vec4 position_in_world = modelToWorldMatrix * vec4(position, 1.0);
-    gl_Position = cameraToClipMatrix * worldToCameraMatrix * position_in_world;
+    mat4 model_to_camera = worldToCameraMatrix * modelToWorldMatrix;
+    gl_Position = cameraToClipMatrix * model_to_camera * vec4(position, 1.0);
 
-    vec4 normal_in_world = normalize(modelToWorldMatrix * vec4(normal, 0.0));
-    vec4 cam_position = normalize(inverse(worldToCameraMatrix) * vec4(0.0, 0.0, 0.0, 1.0));
+    vec4 normal_in_world = normalize(model_to_camera * vec4(normal, 0.0));
 
-    float cosAngIncidence = dot(normal_in_world, cam_position);
+    float cosAngIncidence = dot(normal_in_world, dirToLight);
     cosAngIncidence = clamp(cosAngIncidence, 0, 1);
-    
-    interpColor = lightIntensity * diffuseColor * cosAngIncidence;
+
+    interpColor = (diffuseColor * lightIntensity * cosAngIncidence) +
+        (diffuseColor * ambientIntensity);
+
 }
 '''.strip()
 
