@@ -22,7 +22,7 @@ class Game(object):
         self.start_time = None
         # self.camera = Camera((0.0, 0.0, 0.0))
         self.mouse_movement = (0.0,0.0)
-        size = 64
+        size = 128
         self.world = World(size)
         self.camera = Camera((0.0, size+size/8, -size*2))
 

@@ -15,7 +15,7 @@ class Camera(object):
     def __init__(self, position):
         self._fovy = 45.0
         self._near = 0.01
-        self._far = 200.0
+        self._far = 10000.0
 
         self._roty = 0.0
         self._rotx = 0.0

@@ -56,6 +56,10 @@ class AbstractOctreeParent(AbstractOctree):
         for index, child in enumerate(self._children):
             yield (child, self._get_child_info(info, index))
 
+    def _get_point(self, point, info):
+        index = self._child_index_closest_to_point(point, info['origin'])
+        return self.child(index)._get_point(point, self._get_child_info(info, index))
+
     def _get_height(self, x, z, info):
         origin = info['origin']
         index1 = 0
@@ -72,13 +76,21 @@ class AbstractOctreeParent(AbstractOctree):
         child2 = self.child(index2)
         return child2._get_height(x,z,self._get_child_info(info, index2))
 
-    def _child_containing_point(self, point, origin):
+    def _child_index_closest_to_point(self, point, origin):
         index = 0
         if point.x >= origin.x: index |= 4
         if point.y >= origin.y: index |= 2
         if point.z >= origin.z: index |= 1
 
-        return self.child(index)
+        return index
+
+    def _should_neighbor_generate_mesh(self, info, indices):
+        for index in indices:
+            child = self.child(index)
+            child_info = self._get_child_info(info)
+            if _should_neighbor_generate_mesh(child_info, indices):
+                return True
+        return False
 
     def _generate_mesh(self, info):
         verts = []
@@ -219,6 +231,13 @@ class Octree(AbstractOctreeParent):
     def get_height(self, x, z):
         return self._get_height(x,z,self._get_info())
 
+    def get_point(self, point):
+        half_size = self.size() / 2.0
+        for i in xrange(3):
+            if abs(point[i]) > half_size:
+                return (None, None)
+        return self._get_point(point, self._get_info())
+
 class OctreeInterior(AbstractOctreeParent, AbstractOctreeChild):
     def __init__(self):
         # self._children = tuple([OctreeLeaf(self) for i in xrange(8)])
@@ -235,6 +254,9 @@ class OctreeLeaf(AbstractOctreeChild):
         self._data = data
         # TODO: possibly merge here
 
+    def _get_point(self, point, info):
+        return self, info
+
     def _get_height(self, x, z, info):
         if not self.data():
             return None
@@ -243,14 +265,54 @@ class OctreeLeaf(AbstractOctreeChild):
     def _is_leaf(self):
         return True
 
-    def _generate_mesh(self, info):
-        if not self.data():
-            return
+    def _should_neighbor_generate_mesh(self, info, indices):
+        return not bool(self.data())
 
-        VERTS = info['cube'].VERTICES
-        verts = []
+    def _should_generate_mesh__check_neighbor(self, info, axis, direction, indices):
+        """check if this neighbor is transparent
+        """
         origin = info['origin']
         size = info['size']
+
+        point = origin.copy()
+        point[axis] += size*direction
+        obj, obj_info = info['parents'][0].get_point(point)
+
+        if obj is None:
+            return True
+        elif obj._should_neighbor_generate_mesh(obj_info, indices):
+            return True
+        return False
+
+    def _should_generate_mesh(self, info):
+        return bool(self.data())
+        # if not self.data():
+        #     return False
+
+        # if self._should_generate_mesh__check_neighbor(info, 0, 1.0, [6,7,4,5]): # +x
+        #     return True
+        # elif self._should_generate_mesh__check_neighbor(info, 0, -1.0, [2,3,0,1]): # -x
+        #     return True
+        # elif self._should_generate_mesh__check_neighbor(info, 1, 1.0, [2,3,6,7]): # +y
+        #     return True
+        # elif self._should_generate_mesh__check_neighbor(info, 1, -1.0, [0,1,4,5]): # -y
+        #     return True
+        # elif self._should_generate_mesh__check_neighbor(info, 2, 1.0, [2,6,0,4]): # +z
+        #     return True
+        # elif self._should_generate_mesh__check_neighbor(info, 2, -1.0, [3,7,1,5]): # -z
+        #     return True
+        # return False
+
+    def _generate_mesh(self, info):
+        if not self._should_generate_mesh(info):
+            return
+
+        # generate mesh data for this point
+        #
+        origin = info['origin']
+        size = info['size']
+        VERTS = info['cube'].VERTICES
+        verts = []
         for i in xrange(0, len(VERTS), 3):
             # vert = origin + Vector([VERTS[i], VERTS[i+1], VERTS[i+2]]) * size
             # verts.append(vert.x)
