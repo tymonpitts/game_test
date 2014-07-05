@@ -30,6 +30,8 @@ class Game(object):
         self.cube = None
         self.shaders = {}
 
+        self.block_ids_to_cls = []
+
     def get_window_title(self):
         return 'Game Test'
 
@@ -51,6 +53,7 @@ class Game(object):
             GL.glUniform4f(shader.uniforms['lightIntensity'], 0.8, 0.8, 0.8, 1.0)
             GL.glUniform4f(shader.uniforms['ambientIntensity'], 0.2, 0.2, 0.2, 1.0)
 
+        self.register_blocks()
         self.world.generate_terrain()
 
         GL.glEnable(GL.GL_CULL_FACE)
@@ -64,6 +67,17 @@ class Game(object):
         GL.glEnable(depth_clamp.GL_DEPTH_CLAMP)
 
         glfw.Disable(glfw.MOUSE_CURSOR)
+
+    def register_blocks(self):
+        from .blocks import _BLOCKS
+        current_id = 0
+        for cls in _BLOCKS:
+            print 'Registering %s' % cls.__name__
+            next_id = cls.register(current_id)
+            num_ids = next_id - current_id
+            self.block_ids_to_cls.extend([cls] * num_ids)
+            current_id = next_id
+            print '    registered states: %s' % num_ids
 
     def retrieve_mouse_data(self):
         window_size = glfw.GetWindowSize()
