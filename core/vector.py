@@ -16,9 +16,13 @@ class Vector(AbstractVector):
         return numpy.linalg.norm(self._data)
 
     def normalize(self):
+        if self.length() == 0:
+            return
         self._data /= self.length()
 
     def normal(self):
+        if self.length() == 0:
+            return Vector()
         return Vector(self._data / self.length())
 
     def __xor__(self, other):
@@ -37,4 +41,10 @@ class Vector(AbstractVector):
         return numpy.dot(
                 [self[0], self[1], self[2]], 
                 [other[0], other[1], other[2]])
+
+    def magnitude(self):
+        result = 0
+        for i in xrange(3):
+            result += pow(self[i], 2)
+        return math.sqrt(result)
 

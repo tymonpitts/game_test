@@ -6,7 +6,10 @@ from .matrix import Matrix, MatrixStack
 from .point import Point
 from .vector import Vector
 
+from .bounding_box import BoundingBox
+
 from .shader import BaseShader
 from .mesh import Mesh
 from .octree import Octree
+from .abstract_camera import AbstractCamera
 
