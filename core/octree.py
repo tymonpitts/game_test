@@ -13,6 +13,7 @@ from OpenGL import GL
 from . import Point
 from . import Vector
 from . import Matrix
+from . import BoundingBox
 
 from .logger import log, increase_tab, decrease_tab, Logger
 
@@ -24,6 +25,13 @@ class AbstractOctree(object):
 
     def data(self):
         return None
+
+    def _get_bbox(self, info):
+        half_size = info['size'] * 0.5
+        offset = Vector([half_size]*3)
+        min_ = info['origin'] - offset
+        max_ = info['origin'] + offset
+        return BoundingBox(min_, max_)
 
 class AbstractOctreeParent(AbstractOctree):
     def _get_child_info(self, info, index, copy=True):
@@ -183,6 +191,15 @@ class AbstractOctreeParent(AbstractOctree):
         indices = (7, 5) # top bottom
         self._init_column_from_height_map(v, indices, min_height, max_height, origin, info)
 
+    def _get_collisions(self, bbox, info):
+        collision = self._get_bbox(info).intersection(bbox)
+        result = []
+        if collision:
+            for child, child_info in self.iter_children_info(info):
+                child_collisions = child._get_collisions(bbox, child_info)
+                result.extend(child_collisions)
+        return result
+
 class AbstractOctreeChild(AbstractOctree):
     pass
 
@@ -238,6 +255,9 @@ class Octree(AbstractOctreeParent):
                 return (None, None)
         return self._get_point(point, self._get_info())
 
+    def get_collisions(self, bbox):
+        return self._get_collisions(bbox, self._get_info())
+
 class OctreeInterior(AbstractOctreeParent, AbstractOctreeChild):
     def __init__(self):
         # self._children = tuple([OctreeLeaf(self) for i in xrange(8)])
@@ -260,7 +280,7 @@ class OctreeLeaf(AbstractOctreeChild):
     def _get_height(self, x, z, info):
         if not self.data():
             return None
-        return info['origin'].y+0.5
+        return info['origin'].y+(info['size'] / 2.0)
 
     def _is_leaf(self):
         return True
@@ -324,4 +344,14 @@ class OctreeLeaf(AbstractOctreeChild):
         normals = info['cube'].NORMALS
         indices = [i + info['index_offset'] for i in info['cube'].INDICES]
         return verts, normals, indices
+
+    def _get_collisions(self, bbox, info):
+        if not bool(self.data()):
+            return []
+        this_bbox = self._get_bbox(info)
+        collision = this_bbox.intersection(bbox)
+        if collision:
+            return [(collision, this_bbox)]
+        else:
+            return []
 

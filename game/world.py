@@ -183,4 +183,9 @@ class World(object):
         # GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
         # self._debug_mesh.render()
 
+    def get_collisions(self, bbox):
+        return self.octree.get_collisions(bbox)
+
+    def get_height(self, x, z):
+        return self.octree.get_height(x,z)
 

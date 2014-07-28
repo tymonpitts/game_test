@@ -20,15 +20,14 @@ class Game(object):
     def __init__(self):
         self.elapsed_time = 0.0
         self.start_time = None
-        # self.camera = Camera((0.0, 0.0, 0.0))
         self.mouse_movement = (0.0,0.0)
-        size = 128
-        self.world = World(size)
-        self.camera = Camera((0.0, size+size/8, -size*2))
 
         self.pressed_keys = set()
         self.cube = None
         self.shaders = {}
+        self.player = None
+        self.world = None
+        # self.collider = None
 
         self.block_ids_to_cls = []
 
@@ -53,8 +52,28 @@ class Game(object):
             GL.glUniform4f(shader.uniforms['lightIntensity'], 0.8, 0.8, 0.8, 1.0)
             GL.glUniform4f(shader.uniforms['ambientIntensity'], 0.2, 0.2, 0.2, 1.0)
 
+        self.shaders['constant'] = core.BaseShader(CONSTANT_SHADER, FRAGMENT_SHADER)
+        self.shaders['constant'].store_uniform_location('modelToWorldMatrix')
+        self.shaders['constant'].store_uniform_location('worldToCameraMatrix')
+        self.shaders['constant'].store_uniform_location('cameraToClipMatrix')
+        self.shaders['constant'].store_uniform_location('color')
+
         self.register_blocks()
+
+        from .world import World
+        self.world = World(128)
         self.world.generate_terrain()
+
+        from .player import Player
+        x=0.5
+        z=-3.5
+        y = self.world.get_height(x,z)
+        self.player = Player([x, y, z])
+
+        # from ..tests import collision
+        # self.player = collision.Camera()
+        # self.collider = collision.Collider()
+        # self.world = collision.World()
 
         GL.glEnable(GL.GL_CULL_FACE)
         GL.glCullFace(GL.GL_BACK)
@@ -88,8 +107,9 @@ class Game(object):
 
         glfw.SetMousePos(*window_center)
 
-    def handle_input(self):
-        self.camera.handle_input(self.pressed_keys, self.mouse_movement)
+    def update(self):
+        self.player.update(self)
+        # self.collider.update(self)
 
     def keyboard(self, key, press):
         if key == glfw.KEY_ESC:
@@ -107,8 +127,11 @@ class Game(object):
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
         random.seed(1121327837)
+        i_cam_mat = self.player.camera_matrix().inverse()
+        with self.shaders['constant'] as shader:
+            GL.glUniformMatrix4fv(shader.uniforms['worldToCameraMatrix'], 1, GL.GL_FALSE, i_cam_mat.tolist())
+
         with self.shaders['cube'] as shader:
-            i_cam_mat = self.camera.matrix.inverse()
             GL.glUniformMatrix4fv(shader.uniforms['worldToCameraMatrix'], 1, GL.GL_FALSE, i_cam_mat.tolist())
 
             light_dir = core.Vector([0.1, 1.0, 0.5])
@@ -147,15 +170,23 @@ class Game(object):
             # GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, model_mat.top().tolist())
             # self.cube.render()
 
+
+
             GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, core.Matrix().tolist())
             self.world.render(self, shader)
+            self.player.render(self, shader)
+
+        # self.world.render(self)
+        # self.collider.render(self)
 
         glfw.SwapBuffers()
         
     def reshape(self, w, h):
-        self.camera.reshape(w, h)
+        self.player.reshape(w, h)
         with self.shaders['cube'] as shader:
-            GL.glUniformMatrix4fv(shader.uniforms['cameraToClipMatrix'], 1, GL.GL_FALSE, self.camera.projection_matrix.tolist())
+            GL.glUniformMatrix4fv(shader.uniforms['cameraToClipMatrix'], 1, GL.GL_FALSE, self.player.projection_matrix.tolist())
+        with self.shaders['constant'] as shader:
+            GL.glUniformMatrix4fv(shader.uniforms['cameraToClipMatrix'], 1, GL.GL_FALSE, self.player.projection_matrix.tolist())
         GL.glViewport(0, 0, w, h)
 
         window_center = [w / 2, h / 2]
@@ -197,12 +228,12 @@ class Game(object):
                     # print 'fps:',fps
                     # print 'mouse_movement:',str(self.mouse_movement)
                     # print 'camera_mat:'
-                    # print self.camera.matrix
+                    # print self.player.matrix
                     fps = 0
                 fps += 1
 
                 self.retrieve_mouse_data()
-                self.handle_input()
+                self.update()
                 self.display()
             except:
                 glfw.Terminate()
@@ -282,9 +313,35 @@ void main()
     float cosAngIncidence = dot(normal_in_world, dirToLight);
     cosAngIncidence = clamp(cosAngIncidence, 0, 1);
 
-    interpColor = (diffuseColor * lightIntensity * cosAngIncidence) +
-        (diffuseColor * ambientIntensity);
+    float mult = ((position[1])/20.0);
+    interpColor = ((diffuseColor * lightIntensity * cosAngIncidence) +
+        (diffuseColor * ambientIntensity)) * vec4(mult,mult,mult,1.0);
 
+}
+'''.strip()
+
+
+# constant color
+#
+CONSTANT_SHADER = '''
+#version 330
+
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec3 normal;
+
+smooth out vec4 interpColor;
+
+uniform vec4 color;
+
+uniform mat4 cameraToClipMatrix;
+uniform mat4 worldToCameraMatrix;
+uniform mat4 modelToWorldMatrix;
+
+void main()
+{
+    mat4 model_to_camera = worldToCameraMatrix * modelToWorldMatrix;
+    gl_Position = cameraToClipMatrix * model_to_camera * vec4(position, 1.0);
+    interpColor = color;
 }
 '''.strip()
 
