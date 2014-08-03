@@ -30,18 +30,12 @@ class AbstractOctreeBase(abstract_tree.AbstractTreeBase):
     def _interior_cls(self):
         return OctreeInterior
 
-class AbstractOctreeParent(abstract_tree.AbstractTreeParent, AbstractOctreeBase):
+class OctreeInterior(abstract_tree.AbstractTreeInterior, AbstractOctreeBase):
     pass
 
-class AbstractOctreeChild(abstract_tree.AbstractTreeChild, AbstractOctreeBase):
+class OctreeLeaf(abstract_tree.AbstractTreeLeaf, AbstractOctreeBase):
     pass
 
-class Octree(abstract_tree.AbstractTree, AbstractOctreeParent):
-    pass
-
-class OctreeInterior(abstract_tree.AbstractTreeInterior, AbstractOctreeParent, AbstractOctreeChild):
-    pass
-
-class OctreeLeaf(abstract_tree.AbstractTreeLeaf, AbstractOctreeChild):
+class Octree(abstract_tree.AbstractTree, OctreeInterior):
     pass
 

@@ -83,7 +83,7 @@ class AbstractWorldOctreeBase(octree.AbstractOctreeBase):
         max_ = info['origin'] + offset
         return core.BoundingBox(min_, max_)
 
-class AbstractWorldOctreeParent(octree.AbstractOctreeParent, AbstractWorldOctreeBase):
+class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
     def _get_height(self, x, z, info):
         origin = info['origin']
         index1 = 0
@@ -208,13 +208,7 @@ class AbstractWorldOctreeParent(octree.AbstractOctreeParent, AbstractWorldOctree
                 result.extend(child_collisions)
         return result
 
-class AbstractWorldOctreeChild(octree.AbstractOctreeChild, AbstractWorldOctreeBase):
-    pass
-
-class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeParent, AbstractWorldOctreeChild):
-    pass
-
-class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeChild):
+class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
     def _get_height(self, x, z, info):
         if not self.data():
             return None
@@ -290,7 +284,7 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeChild):
         else:
             return []
 
-class World(octree.Octree, AbstractWorldOctreeParent):
+class World(octree.Octree, WorldOctreeInterior):
     def __init__(self, size):
         super(World, self).__init__(size)
         self.mesh = None

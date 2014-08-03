@@ -34,7 +34,7 @@ class AbstractTreeBase(object):
     def data(self):
         return None
 
-class AbstractTreeParent(AbstractTreeBase):
+class AbstractTreeInterior(AbstractTreeBase):
     def _get_child_info(self, info, index, copy=True):
         if copy:
             info = info.copy()
@@ -77,10 +77,24 @@ class AbstractTreeParent(AbstractTreeBase):
 
         return index
 
-class AbstractTreeChild(AbstractTreeBase):
-    pass
+class AbstractTreeLeaf(AbstractTreeBase):
+    def __init__(self, data=None):
+        self._data = data
 
-class AbstractTree(AbstractTreeParent):
+    def data(self):
+        return self._data
+
+    def set_data(self, data):
+        self._data = data
+        # TODO: possibly merge here
+
+    def _get_point(self, point, info):
+        return self, info
+
+    def _is_leaf(self):
+        return True
+
+class AbstractTree(AbstractTreeInterior):
     """
 
     Child indices:
@@ -115,26 +129,4 @@ class AbstractTree(AbstractTreeParent):
             if abs(point[i]) > half_size:
                 return (None, None)
         return self._get_point(point, self._get_info())
-
-class AbstractTreeInterior(AbstractTreeParent, AbstractTreeChild):
-    def __init__(self):
-        # self._children = tuple([AbstractTreeLeaf(self) for i in xrange(8)])
-        pass
-
-class AbstractTreeLeaf(AbstractTreeChild):
-    def __init__(self, data=None):
-        self._data = data
-
-    def data(self):
-        return self._data
-
-    def set_data(self, data):
-        self._data = data
-        # TODO: possibly merge here
-
-    def _get_point(self, point, info):
-        return self, info
-
-    def _is_leaf(self):
-        return True
 
