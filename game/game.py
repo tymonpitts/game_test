@@ -62,7 +62,6 @@ class Game(object):
 
         from .world import World
         self.world = World(128)
-        self.world.generate_terrain()
 
         from .player import Player
         x=0.5

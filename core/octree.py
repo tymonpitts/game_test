@@ -22,7 +22,13 @@ from . import abstract_tree
 #============================================================================#
 #=================================================================== CLASS ==#
 class AbstractOctreeBase(abstract_tree.AbstractTreeBase):
-    pass
+    @property
+    def _leaf_cls(self):
+        return OctreeLeaf
+
+    @property
+    def _interior_cls(self):
+        return OctreeInterior
 
 class AbstractOctreeParent(abstract_tree.AbstractTreeParent, AbstractOctreeBase):
     pass
