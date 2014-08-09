@@ -63,13 +63,13 @@ class Game(object):
         self.register_blocks()
 
         from .world import World
-        self.world = World(128)
+        self.world = World(self, 128)
 
         from .player import Player
         x=0.5
         z=-3.5
         y = self.world.get_height(x,z)
-        self.player = Player([x, y, z])
+        self.player = Player(self, [x, y, z])
 
         # from ..tests import collision
         # self.player = collision.Camera()
@@ -109,7 +109,7 @@ class Game(object):
         glfw.SetMousePos(*window_center)
 
     def update(self):
-        self.player.update(self)
+        self.player.update()
         # self.collider.update(self)
 
     def keyboard(self, key, press):
@@ -139,8 +139,8 @@ class Game(object):
             light_dir *= i_cam_mat
             GL.glUniform4fv(shader.uniforms['dirToLight'], 1, light_dir.tolist())
 
-        self.world.render(self)
-        self.player.render(self)
+        self.world.render()
+        self.player.render()
 
         # self.world.render(self)
         # self.collider.render(self)

@@ -31,7 +31,7 @@ class Player(core.AbstractCamera):
         from .. import GAME
         return GAME.world
 
-    def render(self, game):
+    def render(self):
         bbox = self._get_bbox_at_pos(self._pos)
         mat = core.Matrix()
         center = bbox.center()
@@ -39,10 +39,10 @@ class Player(core.AbstractCamera):
             mat[i,i] = bbox.get_dimension(i)
             mat[3,i] = center[i]
 
-        with game.shaders['skin'] as shader:
+        with self.game().shaders['skin'] as shader:
             GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
             GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, mat.tolist())
-            game.cube.render()
+            self.game().cube.render()
 
     def camera_matrix(self):
         offset = core.Matrix()
@@ -51,25 +51,25 @@ class Player(core.AbstractCamera):
         offset[3,2]=-5.0
         return offset * self.matrix
 
-    def update(self, game):
+    def update(self):
         # add mouse_move to rotation values
         # 
-        self._rotx += game.mouse_movement[1]
+        self._rotx += self.game().mouse_movement[1]
         self._rotx = self.clamp_angle(self._rotx)
-        self._roty -= game.mouse_movement[0]
+        self._roty -= self.game().mouse_movement[0]
         ry = self._get_roty_matrix()
         rx = self._get_rotx_matrix()
 
         if self._grounded:
-            acceleration = self._update_for_ground(game)
+            acceleration = self._update_for_ground()
         else:
-            acceleration = self._update_for_air(game)
+            acceleration = self._update_for_air()
 
         if acceleration.length():
             acceleration *= ry
             components = [0,1,2]
             start_pos = self._pos
-            solution, solution_component = self._sanitize_acceleration(game, start_pos, acceleration)
+            solution, solution_component = self._sanitize_acceleration(start_pos, acceleration)
             while solution_component is not None:
                 try:
                     components.remove(solution_component)
@@ -84,7 +84,7 @@ class Player(core.AbstractCamera):
                 start_pos = start_pos + solution
                 acceleration = acceleration - solution
                 acceleration[solution_component] = 0.0
-                solution, solution_component = self._sanitize_acceleration(game, start_pos, acceleration)
+                solution, solution_component = self._sanitize_acceleration(start_pos, acceleration)
             self._pos = start_pos + solution
 
         # resolve xform components to a full matrix
@@ -93,10 +93,10 @@ class Player(core.AbstractCamera):
         for i in xrange(3):
             self.matrix[3,i] = self._pos[i]
 
-        if ' ' in game.pressed_keys:
+        if ' ' in self.game().pressed_keys:
             print 'pos:', self._pos
 
-    def _sanitize_acceleration(self, game, start_pos, acceleration):
+    def _sanitize_acceleration(self, start_pos, acceleration):
         pos1 = start_pos
         pos2 = start_pos + acceleration
 
@@ -108,7 +108,7 @@ class Player(core.AbstractCamera):
         bbox.bbox_expand(bbox1)
         bbox.bbox_expand(bbox2)
 
-        collision_boxes = game.world.get_collisions(bbox)
+        collision_boxes = self.game().world.get_collisions(bbox)
 
         # solve collisions
         #
@@ -189,21 +189,21 @@ class Player(core.AbstractCamera):
                 component_index = i
         return t, component_index
 
-    def _update_for_ground(self, game):
+    def _update_for_ground(self):
         trans = core.Vector()
-        if 'W' in game.pressed_keys:
+        if 'W' in self.game().pressed_keys:
             trans.z += 1.0
-        if 'S' in game.pressed_keys:
+        if 'S' in self.game().pressed_keys:
             trans.z -= 1.0
-        if 'A' in game.pressed_keys:
+        if 'A' in self.game().pressed_keys:
             trans.x += 1.0
-        if 'D' in game.pressed_keys:
+        if 'D' in self.game().pressed_keys:
             trans.x -= 1.0
         trans.normalize()
-        trans *= self.walking_speed * game.elapsed_time
+        trans *= self.walking_speed * self.game().elapsed_time
         return trans
 
-    def _update_for_air(self, game):
+    def _update_for_air(self):
         pass
 
 

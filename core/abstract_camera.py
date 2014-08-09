@@ -12,7 +12,8 @@ from . import Vector, Point, Matrix
 #============================================================================#
 #=================================================================== CLASS ==#
 class AbstractCamera(object):
-    def __init__(self, position=[0,0,0]):
+    def __init__(self, game, position=[0,0,0]):
+        self._game = game
         self._fovy = 45.0
         self._near = 0.01
         self._far = 10000.0
@@ -27,6 +28,9 @@ class AbstractCamera(object):
         self.acceleration_rate = 0.1
         self.rotation_speed = 0.001
         self.max_speed = 0.5
+
+    def game(self):
+        return self._game
 
     def reshape(self, w, h):
         self.projection_matrix = self._build_perspective_mat(w, h)
@@ -78,6 +82,6 @@ class AbstractCamera(object):
         ry = self._get_roty_matrix()
         return rx * ry
 
-    def update(self, game):
+    def update(self):
         raise NotImplementedError
 

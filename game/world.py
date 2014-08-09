@@ -84,7 +84,7 @@ class AbstractWorldOctreeBase(octree.AbstractOctreeBase):
         return core.BoundingBox(min_, max_)
 
 class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
-    # def _render(self, info, game, shader):
+    # def _render(self, info, shader):
     #     for child, child_info in self.iter_children_info(info):
     #         if info['size'] > 4:
     #             if abs(child_info['origin'][0]) > abs(info['origin'][0]):
@@ -93,7 +93,7 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
     #             #     continue
     #             if abs(child_info['origin'][2]) > abs(info['origin'][2]):
     #                 continue
-    #         child._render(child_info, game, shader)
+    #         child._render(child_info, shader)
 
     def _get_height(self, info, x, z):
         origin = info['origin']
@@ -221,7 +221,7 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
         return result
 
 class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
-    # def _render(self, info, game, shader):
+    # def _render(self, info, shader):
     #     if not self.data():
     #         return
 
@@ -240,12 +240,12 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
     #     mat[3,1] = info['origin'][1]
     #     mat[3,2] = info['origin'][2]
 
-    #     # if game.do_printing:
+    #     # if info['game'].do_printing:
     #     #     print 'rendering debug cube:'
     #     #     print mat
 
     #     GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, mat.tolist())
-    #     game.cube.render()
+    #     info['game'].cube.render()
 
     def _get_height(self, info, x, z):
         if not self.data():
@@ -323,7 +323,8 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
             return []
 
 class World(octree.Octree, WorldOctreeInterior):
-    def __init__(self, size):
+    def __init__(self, game, size):
+        self._game = game
         super(World, self).__init__(size)
         self.mesh = None
 
@@ -343,6 +344,14 @@ class World(octree.Octree, WorldOctreeInterior):
         stime = time.time()
         self._generate_mesh()
         print 'mesh generation time:', (time.time() - stime)
+
+    def game(self):
+        return self._game
+
+    def _get_info(self):
+        info = super(World, self)._get_info()
+        info['game'] = self.game()
+        return info
 
     def _generate_height_map(self):
         """generates a height map using the diamond-square algorithm
@@ -447,8 +456,8 @@ class World(octree.Octree, WorldOctreeInterior):
     def _init_from_height_map(self, values):
         super(World, self)._init_from_height_map(self._get_info(), values)
 
-    def render(self, game):
-        with game.shaders['skin'] as shader:
+    def render(self):
+        with self.game().shaders['skin'] as shader:
             GL.glUniformMatrix4fv(
                     shader.uniforms['modelToWorldMatrix'], 
                     1, 
@@ -467,7 +476,7 @@ class World(octree.Octree, WorldOctreeInterior):
             # GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
             # info = self._get_info()
             # for child, child_info in self.iter_children_info(info):
-            #     child._render(child_info, game, shader)
+            #     child._render(child_info, shader)
 
     def get_height(self, x, z):
         return self._get_height(self._get_info(), x, z)
