@@ -84,7 +84,7 @@ class AbstractWorldOctreeBase(octree.AbstractOctreeBase):
         return core.BoundingBox(min_, max_)
 
 class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
-    # def _render(self, game, shader, info):
+    # def _render(self, info, game, shader):
     #     for child, child_info in self.iter_children_info(info):
     #         if info['size'] > 4:
     #             if abs(child_info['origin'][0]) > abs(info['origin'][0]):
@@ -93,9 +93,9 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
     #             #     continue
     #             if abs(child_info['origin'][2]) > abs(info['origin'][2]):
     #                 continue
-    #         child._render(game, shader, child_info)
+    #         child._render(child_info, game, shader)
 
-    def _get_height(self, x, z, info):
+    def _get_height(self, info, x, z):
         origin = info['origin']
         index1 = 0
         if x >= origin.x: index1 |= 4
@@ -104,12 +104,12 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
         index1 |= 2
 
         child1 = self.child(index1)
-        height = child1._get_height(x,z,self._get_child_info(info, index1))
+        height = child1._get_height(self._get_child_info(info, index1), x, z)
         if height is not None:
             return height
 
         child2 = self.child(index2)
-        return child2._get_height(x,z,self._get_child_info(info, index2))
+        return child2._get_height(self._get_child_info(info, index2), x, z)
 
     def _should_neighbor_generate_mesh(self, info, indices):
         for index in indices:
@@ -134,7 +134,7 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
             indices.extend(c_indices)
         return verts, normals, indices
 
-    def _init_column_from_height_map(self, values, indices, min_height, max_height, origin, info):
+    def _init_column_from_height_map(self, info, values, indices, min_height, max_height, origin):
         max_ = values.max()
         min_ = values.min()
         all_leaf = (len(values) == 1)
@@ -158,7 +158,7 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
             self._children[indices[0]] = self._leaf_cls(1)
         else:
             self._children[indices[0]] = self._interior_cls()
-            self._children[indices[0]]._init_from_height_map(values, self._get_child_info(info, indices[0]))
+            self._children[indices[0]]._init_from_height_map(self._get_child_info(info, indices[0]), values)
 
         # handle bottom
         #
@@ -166,9 +166,9 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
             self._children[indices[1]] = self._leaf_cls(1)
         else:
             self._children[indices[1]] = self._interior_cls()
-            self._children[indices[1]]._init_from_height_map(values, self._get_child_info(info, indices[1]))
+            self._children[indices[1]]._init_from_height_map(self._get_child_info(info, indices[1]), values)
 
-    def _init_from_height_map(self, values, info):
+    def _init_from_height_map(self, info, values):
         # gather data to initialize each column individually
         #
         self._children = [None] * 8
@@ -184,7 +184,7 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
         """
         v = values[:size, :size]
         indices = (2, 0) # top bottom
-        self._init_column_from_height_map(v, indices, min_height, max_height, origin, info)
+        self._init_column_from_height_map(info, v, indices, min_height, max_height, origin)
 
         """
         o x
@@ -192,7 +192,7 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
         """
         v = values[size:full_size, :size]
         indices = (6, 4) # top bottom
-        self._init_column_from_height_map(v, indices, min_height, max_height, origin, info)
+        self._init_column_from_height_map(info, v, indices, min_height, max_height, origin)
 
         """
         o o
@@ -200,7 +200,7 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
         """
         v = values[:size, size:full_size]
         indices = (3, 1) # top bottom
-        self._init_column_from_height_map(v, indices, min_height, max_height, origin, info)
+        self._init_column_from_height_map(info, v, indices, min_height, max_height, origin)
 
         """
         o o
@@ -208,20 +208,20 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
         """
         v = values[size:full_size, size:full_size]
         indices = (7, 5) # top bottom
-        self._init_column_from_height_map(v, indices, min_height, max_height, origin, info)
+        self._init_column_from_height_map(info, v, indices, min_height, max_height, origin)
 
-    def _get_collisions(self, bbox, info):
+    def _get_collisions(self, info, bbox):
         this_bbox = self._get_bbox(info)
         collision = this_bbox.intersection(bbox)
         result = []
         if collision:
             for child, child_info in self.iter_children_info(info):
-                child_collisions = child._get_collisions(bbox, child_info)
+                child_collisions = child._get_collisions(child_info, bbox)
                 result.extend(child_collisions)
         return result
 
 class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
-    # def _render(self, game, shader, info):
+    # def _render(self, info, game, shader):
     #     if not self.data():
     #         return
 
@@ -247,7 +247,7 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
     #     GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, mat.tolist())
     #     game.cube.render()
 
-    def _get_height(self, x, z, info):
+    def _get_height(self, info, x, z):
         if not self.data():
             return None
         return info['origin'].y+(info['size'] / 2.0)
@@ -312,7 +312,7 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
         indices = [i + info['index_offset'] for i in info['cube'].INDICES]
         return verts, normals, indices
 
-    def _get_collisions(self, bbox, info):
+    def _get_collisions(self, info, bbox):
         if not bool(self.data()):
             return []
         this_bbox = self._get_bbox(info)
@@ -445,7 +445,7 @@ class World(octree.Octree, WorldOctreeInterior):
         self.mesh = core.Mesh(verts, normals, indices, GL.GL_TRIANGLES)
 
     def _init_from_height_map(self, values):
-        super(World, self)._init_from_height_map(values, self._get_info())
+        super(World, self)._init_from_height_map(self._get_info(), values)
 
     def render(self, game):
         with game.shaders['skin'] as shader:
@@ -467,11 +467,11 @@ class World(octree.Octree, WorldOctreeInterior):
             # GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
             # info = self._get_info()
             # for child, child_info in self.iter_children_info(info):
-            #     child._render(game, shader, child_info)
+            #     child._render(child_info, game, shader)
 
     def get_height(self, x, z):
-        return self._get_height(x,z,self._get_info())
+        return self._get_height(self._get_info(), x, z)
 
     def get_collisions(self, bbox):
-        return self._get_collisions(bbox, self._get_info())
+        return self._get_collisions(self._get_info(), bbox)
 

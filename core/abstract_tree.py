@@ -65,9 +65,9 @@ class AbstractTreeInterior(AbstractTreeBase):
         for index, child in enumerate(self._children):
             yield (child, self._get_child_info(info, index))
 
-    def _get_point(self, point, info):
+    def _get_point(self, info, point):
         index = self._child_index_closest_to_point(point, info['origin'])
-        return self.child(index)._get_point(point, self._get_child_info(info, index))
+        return self.child(index)._get_point(self._get_child_info(info, index), point)
 
     def _child_index_closest_to_point(self, point, origin):
         index = 0
@@ -88,7 +88,7 @@ class AbstractTreeLeaf(AbstractTreeBase):
         self._data = data
         # TODO: possibly merge here
 
-    def _get_point(self, point, info):
+    def _get_point(self, info, point):
         return self, info
 
     def _is_leaf(self):
@@ -128,5 +128,5 @@ class AbstractTree(AbstractTreeInterior):
         for i in xrange(3):
             if abs(point[i]) > half_size:
                 return (None, None)
-        return self._get_point(point, self._get_info())
+        return self._get_point(self._get_info(), point)
 
