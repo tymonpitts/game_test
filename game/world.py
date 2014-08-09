@@ -84,6 +84,17 @@ class AbstractWorldOctreeBase(octree.AbstractOctreeBase):
         return core.BoundingBox(min_, max_)
 
 class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
+    # def _render(self, game, shader, info):
+    #     for child, child_info in self.iter_children_info(info):
+    #         if info['size'] > 4:
+    #             if abs(child_info['origin'][0]) > abs(info['origin'][0]):
+    #                 continue
+    #             # if abs(child_info['origin'][1]) > abs(info['origin'][1]):
+    #             #     continue
+    #             if abs(child_info['origin'][2]) > abs(info['origin'][2]):
+    #                 continue
+    #         child._render(game, shader, child_info)
+
     def _get_height(self, x, z, info):
         origin = info['origin']
         index1 = 0
@@ -200,7 +211,8 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
         self._init_column_from_height_map(v, indices, min_height, max_height, origin, info)
 
     def _get_collisions(self, bbox, info):
-        collision = self._get_bbox(info).intersection(bbox)
+        this_bbox = self._get_bbox(info)
+        collision = this_bbox.intersection(bbox)
         result = []
         if collision:
             for child, child_info in self.iter_children_info(info):
@@ -209,6 +221,32 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
         return result
 
 class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
+    # def _render(self, game, shader, info):
+    #     if not self.data():
+    #         return
+
+    #     # if abs(info['origin'][0]) > 5:
+    #     #     return
+    #     # if abs(info['origin'][2]) > 5:
+    #     #     return
+    #     if info['origin'][1] > 18 or info['origin'][1] < 10:
+    #         return
+    #     # if info['origin'][1] != 13.5:
+    #     #     return
+
+    #     mat = core.Matrix()
+    #     mat[0,0] = mat[1,1] = mat[2,2] = info['size']
+    #     mat[3,0] = info['origin'][0]
+    #     mat[3,1] = info['origin'][1]
+    #     mat[3,2] = info['origin'][2]
+
+    #     # if game.do_printing:
+    #     #     print 'rendering debug cube:'
+    #     #     print mat
+
+    #     GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, mat.tolist())
+    #     game.cube.render()
+
     def _get_height(self, x, z, info):
         if not self.data():
             return None
@@ -299,7 +337,7 @@ class World(octree.Octree, WorldOctreeInterior):
 
         # stime = time.time()
         # self._debug_mesh = None
-        # self._generate_debug_mesh()
+        # self._generate_debug_mesh(height_map)
         # print 'debugging time:', (time.time() - stime)
 
         stime = time.time()
@@ -308,7 +346,6 @@ class World(octree.Octree, WorldOctreeInterior):
 
     def _generate_height_map(self):
         """generates a height map using the diamond-square algorithm
-        and then assembles an Octree using the height map
         """
 
         size = int(self.size())
@@ -349,31 +386,35 @@ class World(octree.Octree, WorldOctreeInterior):
         return values
 
     def _generate_debug_mesh(self, values):
+        # # print height map
+        # #
+        # start_x = -(self.size() / 2)
+        # start_z = -(self.size() / 2)
+        # for x, row in enumerate(values[:-1]):
+        #     x = start_x + float(x) + 0.5
+        #     for z, y in enumerate(row[:-1]):
+        #         z = start_z + float(z) + 0.5
+        #         top = self.get_height(x,z)
+        #         bottom = top - 1.0
+        #         if y > top or y <= bottom:
+        #             print '(%s, %s): y=%f, top=%s, bottom=%s' % (x,z,y,top,bottom)
+
         # create a debug mesh that represents the heightmap
         #
-        start_x = -(self.size() / 2)
-        start_z = -(self.size() / 2)
-        for x, row in enumerate(values[:-1]):
-            x = start_x + float(x) + 0.5
-            for z, y in enumerate(row[:-1]):
-                z = start_z + float(z) + 0.5
-                top = self.get_height(x,z)
-                bottom = top - 1.0
-                if y > top or y <= bottom:
-                    print '(%s, %s): y=%f, top=%s, bottom=%s' % (x,z,y,top,bottom)
-
-
-
         index_offset = 0
         verts = []
         normals = []
         indices = []
         start_x = -(self.size() / 2)
         start_z = -(self.size() / 2)
-        for x, row in enumerate(values[:-1]):
+        for x, row in enumerate(values):
             x = start_x + float(x) + 0.5
-            for z, y in enumerate(row[:-1]):
+            # if abs(x) > 8:
+            #     continue
+            for z, y in enumerate(row):
                 z = start_z + float(z) + 0.5
+                # if abs(z) > 8:
+                #     continue
 
                 # VERTS = cube.VERTICES
                 # for i in xrange(12, 24, 3):
@@ -406,14 +447,27 @@ class World(octree.Octree, WorldOctreeInterior):
     def _init_from_height_map(self, values):
         super(World, self)._init_from_height_map(values, self._get_info())
 
-    def render(self, game, shader):
-        GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 1.0, 0.5, 1.0)
-        self.mesh.render()
+    def render(self, game):
+        with game.shaders['skin'] as shader:
+            GL.glUniformMatrix4fv(
+                    shader.uniforms['modelToWorldMatrix'], 
+                    1, 
+                    GL.GL_FALSE, 
+                    core.Matrix().tolist())
+            GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 1.0, 0.5, 1.0)
+            self.mesh.render()
 
-        # # render the debug mesh
-        # #
-        # GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
-        # self._debug_mesh.render()
+            # # render the debug mesh
+            # #
+            # GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
+            # self._debug_mesh.render()
+
+            # # render leaves individually for debugging
+            # #
+            # GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
+            # info = self._get_info()
+            # for child, child_info in self.iter_children_info(info):
+            #     child._render(game, shader, child_info)
 
     def get_height(self, x, z):
         return self._get_height(x,z,self._get_info())

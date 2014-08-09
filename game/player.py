@@ -31,16 +31,18 @@ class Player(core.AbstractCamera):
         from .. import GAME
         return GAME.world
 
-    def render(self, game, shader):
+    def render(self, game):
         bbox = self._get_bbox_at_pos(self._pos)
         mat = core.Matrix()
         center = bbox.center()
         for i in xrange(3):
             mat[i,i] = bbox.get_dimension(i)
             mat[3,i] = center[i]
-        GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
-        GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, mat.tolist())
-        game.cube.render()
+
+        with game.shaders['skin'] as shader:
+            GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
+            GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, mat.tolist())
+            game.cube.render()
 
     def camera_matrix(self):
         offset = core.Matrix()
@@ -90,6 +92,9 @@ class Player(core.AbstractCamera):
         self.matrix = rx * ry
         for i in xrange(3):
             self.matrix[3,i] = self._pos[i]
+
+        if ' ' in game.pressed_keys:
+            print 'pos:', self._pos
 
     def _sanitize_acceleration(self, game, start_pos, acceleration):
         pos1 = start_pos

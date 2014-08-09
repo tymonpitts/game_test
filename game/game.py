@@ -31,6 +31,8 @@ class Game(object):
 
         self.block_ids_to_cls = []
 
+        self.do_printing = False
+
     def get_window_title(self):
         return 'Game Test'
 
@@ -40,15 +42,15 @@ class Game(object):
     def init(self):
         self.cube = core.Mesh(data.cube.VERTICES, data.cube.NORMALS, data.cube.INDICES, data.cube.DRAW_METHOD)
 
-        self.shaders['cube'] = core.BaseShader(VERTEX_SHADER, FRAGMENT_SHADER)
-        self.shaders['cube'].store_uniform_location('modelToWorldMatrix')
-        self.shaders['cube'].store_uniform_location('worldToCameraMatrix')
-        self.shaders['cube'].store_uniform_location('cameraToClipMatrix')
-        self.shaders['cube'].store_uniform_location('lightIntensity')
-        self.shaders['cube'].store_uniform_location('ambientIntensity')
-        self.shaders['cube'].store_uniform_location('diffuseColor')
-        self.shaders['cube'].store_uniform_location('dirToLight')
-        with self.shaders['cube'] as shader:
+        self.shaders['skin'] = core.BaseShader(VERTEX_SHADER, FRAGMENT_SHADER)
+        self.shaders['skin'].store_uniform_location('modelToWorldMatrix')
+        self.shaders['skin'].store_uniform_location('worldToCameraMatrix')
+        self.shaders['skin'].store_uniform_location('cameraToClipMatrix')
+        self.shaders['skin'].store_uniform_location('lightIntensity')
+        self.shaders['skin'].store_uniform_location('ambientIntensity')
+        self.shaders['skin'].store_uniform_location('diffuseColor')
+        self.shaders['skin'].store_uniform_location('dirToLight')
+        with self.shaders['skin'] as shader:
             GL.glUniform4f(shader.uniforms['lightIntensity'], 0.8, 0.8, 0.8, 1.0)
             GL.glUniform4f(shader.uniforms['ambientIntensity'], 0.2, 0.2, 0.2, 1.0)
 
@@ -127,53 +129,18 @@ class Game(object):
 
         random.seed(1121327837)
         i_cam_mat = self.player.camera_matrix().inverse()
-        with self.shaders['constant'] as shader:
-            GL.glUniformMatrix4fv(shader.uniforms['worldToCameraMatrix'], 1, GL.GL_FALSE, i_cam_mat.tolist())
+        for shader in self.shaders.itervalues():
+            with shader:
+                GL.glUniformMatrix4fv(shader.uniforms['worldToCameraMatrix'], 1, GL.GL_FALSE, i_cam_mat.tolist())
 
-        with self.shaders['cube'] as shader:
-            GL.glUniformMatrix4fv(shader.uniforms['worldToCameraMatrix'], 1, GL.GL_FALSE, i_cam_mat.tolist())
-
+        with self.shaders['skin'] as shader:
             light_dir = core.Vector([0.1, 1.0, 0.5])
             light_dir.normalize()
             light_dir *= i_cam_mat
             GL.glUniform4fv(shader.uniforms['dirToLight'], 1, light_dir.tolist())
 
-
-
-            # scale = 1
-            # trans = 5
-            # GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
-            # model_mat = core.MatrixStack()
-            # model_mat.scale([scale, scale, scale])
-            # GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, model_mat.top().tolist())
-            # self.cube.render()
-
-            # GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
-            # model_mat = core.MatrixStack()
-            # model_mat.translate([trans, 0.0, 0.0])
-            # model_mat.scale([scale, scale, scale])
-            # GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, model_mat.top().tolist())
-            # self.cube.render()
-
-            # GL.glUniform4f(shader.uniforms['diffuseColor'], 0.0, 1.0, 0.0, 1.0)
-            # model_mat = core.MatrixStack()
-            # model_mat.translate([0.0, trans, 0.0])
-            # model_mat.scale([scale, scale, scale])
-            # GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, model_mat.top().tolist())
-            # self.cube.render()
-
-            # GL.glUniform4f(shader.uniforms['diffuseColor'], 0.0, 0.0, 1.0, 1.0)
-            # model_mat = core.MatrixStack()
-            # model_mat.translate([0.0, 0.0, trans])
-            # model_mat.scale([scale, scale, scale])
-            # GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, model_mat.top().tolist())
-            # self.cube.render()
-
-
-
-            GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, core.Matrix().tolist())
-            self.world.render(self, shader)
-            self.player.render(self, shader)
+        self.world.render(self)
+        self.player.render(self)
 
         # self.world.render(self)
         # self.collider.render(self)
@@ -182,10 +149,13 @@ class Game(object):
         
     def reshape(self, w, h):
         self.player.reshape(w, h)
-        with self.shaders['cube'] as shader:
-            GL.glUniformMatrix4fv(shader.uniforms['cameraToClipMatrix'], 1, GL.GL_FALSE, self.player.projection_matrix.tolist())
-        with self.shaders['constant'] as shader:
-            GL.glUniformMatrix4fv(shader.uniforms['cameraToClipMatrix'], 1, GL.GL_FALSE, self.player.projection_matrix.tolist())
+        for shader in self.shaders.itervalues():
+            with shader:
+                GL.glUniformMatrix4fv(
+                        shader.uniforms['cameraToClipMatrix'], 
+                        1, 
+                        GL.GL_FALSE, 
+                        self.player.projection_matrix.tolist())
         GL.glViewport(0, 0, w, h)
 
         window_center = [w / 2, h / 2]
@@ -224,11 +194,14 @@ class Game(object):
 
                 if (cur_time - last_fps_time) >= 1.0:
                     last_fps_time = cur_time
+                    self.do_printing = True
                     # print 'fps:',fps
                     # print 'mouse_movement:',str(self.mouse_movement)
                     # print 'camera_mat:'
                     # print self.player.matrix
                     fps = 0
+                else:
+                    self.do_printing = False
                 fps += 1
 
                 self.retrieve_mouse_data()
