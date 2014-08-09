@@ -63,7 +63,7 @@ class Player(core.AbstractCamera):
         else:
             acceleration = self._update_for_air(game)
 
-        if acceleration:
+        if acceleration.length():
             acceleration *= ry
             components = [0,1,2]
             start_pos = self._pos

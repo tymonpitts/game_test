@@ -138,6 +138,3 @@ class AbstractVector(object):
     def __ne__(self, other):
         return (not self.__eq__(other))
 
-    def __nonzero__(self):
-        return bool(self[0] or self[1] or self[2])
-
