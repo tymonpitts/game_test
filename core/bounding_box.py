@@ -73,20 +73,28 @@ class BoundingBox(object):
             volume *= length
         return volume
 
-    def intersection(self, other):
-        if not self.collides(other):
+    def intersection(self, other, inclusive=False):
+        if not self.collides(other, inclusive):
             return None
         min_ = [max(self._min[i], other._min[i]) for i in xrange(3)]
         max_ = [min(self._max[i], other._max[i]) for i in xrange(3)]
         return BoundingBox(min_, max_)
 
-    def collides(self, other):
-        if self._max.x <= other._min.x: return False # self is left of other
-        if self._min.x >= other._max.x: return False # self is right of other
-        if self._max.y <= other._min.y: return False # self is above other
-        if self._min.y >= other._max.y: return False # self is below other
-        if self._max.z <= other._min.z: return False # self is behind other
-        if self._min.z >= other._max.z: return False # self is in front of other
+    def collides(self, other, inclusive=False):
+        if inclusive:
+            if self._max.x < other._min.x: return False # self is left of other
+            if self._min.x > other._max.x: return False # self is right of other
+            if self._max.y < other._min.y: return False # self is above other
+            if self._min.y > other._max.y: return False # self is below other
+            if self._max.z < other._min.z: return False # self is behind other
+            if self._min.z > other._max.z: return False # self is in front of other
+        else:
+            if self._max.x <= other._min.x: return False # self is left of other
+            if self._min.x >= other._max.x: return False # self is right of other
+            if self._max.y <= other._min.y: return False # self is above other
+            if self._min.y >= other._max.y: return False # self is below other
+            if self._max.z <= other._min.z: return False # self is behind other
+            if self._min.z >= other._max.z: return False # self is in front of other
         return True # boxes overlap
 
     def translate(self, pos):

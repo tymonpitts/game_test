@@ -221,13 +221,13 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
                 result.extend(child_collisions)
         return result
 
-    def _get_blocks(self, info, bbox, exclude):
+    def _get_blocks(self, info, bbox, exclude_types, inclusive):
         this_bbox = self._get_bbox(info)
-        collision = this_bbox.intersection(bbox)
+        collision = this_bbox.intersection(bbox, inclusive)
         blocks = []
         if collision:
             for child, child_info in self.iter_children_info(info):
-                blocks.extend(child._get_blocks(child_info, bbox, exclude))
+                blocks.extend(child._get_blocks(child_info, bbox, exclude_types, inclusive))
         return blocks
 
     def _get_block(self, info, point):
@@ -338,13 +338,13 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
         else:
             return []
 
-    def _get_blocks(self, info, bbox, exclude):
+    def _get_blocks(self, info, bbox, exclude_types, inclusive):
         block_cls = info['game'].get_block_cls(self.data())
-        if block_cls in exclude:
+        if block_cls in exclude_types:
             return []
 
         this_bbox = self._get_bbox(info)
-        collision = this_bbox.intersection(bbox)
+        collision = this_bbox.intersection(bbox, inclusive)
         if collision:
             return [block_cls(info['game'], self, info)]
         else:
@@ -516,12 +516,22 @@ class World(octree.Octree, WorldOctreeInterior):
     def get_collisions(self, bbox):
         return self._get_collisions(self._get_info(), bbox)
 
-    def get_blocks(self, bbox, exclude=[blocks.Air]):
-        return self._get_blocks(self._get_info(), bbox, exclude)
+    def get_blocks(self, bbox, exclude_types=[blocks.Air], inclusive=False):
+        """Retrieve a list of blocks contained within *bbox*
+
+        :param bbox: The area to retrieve blocks from.
+        :type bbox: :class:`.BoundingBox`
+        :param exclude_types: A list of block types to exclude from the returned value.
+        :type exclude_types: list of :class:`.AbstractBlock` types
+        :param bool inclusive: Whether or not to include blocks that touch the edges of *bbox*
+
+        :rtype: list of :class:`.AbstractBlock` instances
+        """
+        return self._get_blocks(self._get_info(), bbox, exclude_types, inclusive)
 
     def get_block(self, point):
         bounds = self.size() / 2.0
-        if x > bounds or z > bounds or y > bounds:
+        if point.x > bounds or point.z > bounds or point.y > bounds:
             return None
         return self._get_block(self._get_info(), point)
 

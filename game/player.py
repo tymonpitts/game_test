@@ -22,7 +22,8 @@ class Player(core.AbstractCamera):
         # self.depth = 0.25
         self.bbox = core.BoundingBox([-0.25, 0.0, -0.25], [0.25, 1.75, 0.25])
 
-        self.walking_speed = 1.4
+        # self.walking_speed = 1.4
+        self.walking_speed = 3.0
         # self.walking_acceleration = 0.2 # number of secs to reach top speed
         self.velocity = core.Vector()
         self._grounded = True
@@ -60,16 +61,21 @@ class Player(core.AbstractCamera):
         ry = self._get_roty_matrix()
         rx = self._get_rotx_matrix()
 
+        # convert input to an acceleration vector
+        #
         if self._grounded:
             acceleration = self._update_for_ground()
         else:
             acceleration = self._update_for_air()
 
+        # if we have acceleration, perform collision detection 
+        # and adjust the acceleration vector accordingly
+        #
         if acceleration.length():
             acceleration *= ry
             components = [0,1,2]
             start_pos = self._pos
-            solution, solution_component = self._sanitize_acceleration(start_pos, acceleration)
+            solution, solution_component = self.solve_collision(start_pos, acceleration)
             while solution_component is not None:
                 try:
                     components.remove(solution_component)
@@ -84,8 +90,14 @@ class Player(core.AbstractCamera):
                 start_pos = start_pos + solution
                 acceleration = acceleration - solution
                 acceleration[solution_component] = 0.0
-                solution, solution_component = self._sanitize_acceleration(start_pos, acceleration)
+                solution, solution_component = self.solve_collision(start_pos, acceleration)
             self._pos = start_pos + solution
+
+            # determine if we are grounded or in the air
+            #
+            bbox = self._get_bbox_at_pos(self._pos)
+            blocks = self.game().world.get_blocks(bbox, inclusive=True)
+            self._grounded = bool(blocks)
 
         # resolve xform components to a full matrix
         #
@@ -96,7 +108,7 @@ class Player(core.AbstractCamera):
         if ' ' in self.game().pressed_keys:
             print 'pos:', self._pos
 
-    def _sanitize_acceleration(self, start_pos, acceleration):
+    def solve_collision(self, start_pos, acceleration):
         pos1 = start_pos
         pos2 = start_pos + acceleration
 
@@ -155,7 +167,19 @@ class Player(core.AbstractCamera):
         return trans
 
     def _update_for_air(self):
-        pass
+        trans = core.Vector()
+        if 'W' in self.game().pressed_keys:
+            trans.z += 1.0
+        if 'S' in self.game().pressed_keys:
+            trans.z -= 1.0
+        if 'A' in self.game().pressed_keys:
+            trans.x += 1.0
+        if 'D' in self.game().pressed_keys:
+            trans.x -= 1.0
+        trans.normalize()
+        trans *= self.walking_speed * self.game().elapsed_time
+        trans.y -= 9.81 * self.game().elapsed_time
+        return trans
 
 
 
