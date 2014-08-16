@@ -108,14 +108,14 @@ class Player(core.AbstractCamera):
         bbox.bbox_expand(bbox1)
         bbox.bbox_expand(bbox2)
 
-        collision_boxes = self.game().world.get_collisions(bbox)
+        blocks = self.game().world.get_blocks(bbox)
 
         # solve collisions
         #
         t = 1.0
         component = None
-        for collision_box, block_bbox in collision_boxes:
-            this_t, this_component = self._solve_collision(collision_box, acceleration, bbox1)
+        for block in blocks:
+            this_t, this_component = block.solve_collision(bbox1, acceleration)
             if this_t < t:
                 t = this_t
                 component = this_component
@@ -139,55 +139,6 @@ class Player(core.AbstractCamera):
         bbox._min += pos
         bbox._max += pos
         return bbox
-
-    def _solve_collision(self, collision_box, acceleration, bbox):
-        # get a before and after position
-        #
-        before = bbox.center()
-        after = before + acceleration
-        center = collision_box.center()
-
-        expanded_collision_bbox = collision_box.copy()
-        dimensions = core.Vector([self.bbox.get_dimension(i) / 2.0 for i in xrange(3)])
-        expanded_collision_bbox._min -= dimensions
-        expanded_collision_bbox._max += dimensions
-
-        # check that the requested movement is valid
-        #
-        t = 1.0
-        component_index = None
-        other_indices = [(1,2), (0,2), (0,1)]
-        for i, others in enumerate(other_indices):
-            if acceleration[i] == 0:
-                continue
-
-            if before[i] < collision_box._min[i]:
-                component = collision_box._min[i]
-                component -= self.bbox.get_dimension(i) / 2
-            elif before[i] > collision_box._max[i]:
-                component = collision_box._max[i]
-                component += self.bbox.get_dimension(i) / 2
-            else:
-                continue
-
-            this_t = (component - before[i]) / acceleration[i]
-            this_accel = acceleration * this_t
-            this_pos = before + this_accel
-            invalid = False
-            for other in others:
-                if this_pos[other] < expanded_collision_bbox._min[other]:
-                    invalid = True
-                    break
-                if this_pos[other] > expanded_collision_bbox._max[other]:
-                    invalid = True
-                    break
-            if invalid:
-                continue
-
-            if this_t < t:
-                t = this_t
-                component_index = i
-        return t, component_index
 
     def _update_for_ground(self):
         trans = core.Vector()

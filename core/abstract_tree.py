@@ -66,11 +66,12 @@ class AbstractTreeInterior(AbstractTreeBase):
             yield (child, self._get_child_info(info, index))
 
     def _get_point(self, info, point):
-        index = self._child_index_closest_to_point(point, info['origin'])
+        index = self._child_index_closest_to_point(info, point)
         return self.child(index)._get_point(self._get_child_info(info, index), point)
 
-    def _child_index_closest_to_point(self, point, origin):
+    def _child_index_closest_to_point(self, info, point):
         index = 0
+        origin = info['origin']
         if point.x >= origin.x: index |= 4
         if point.y >= origin.y: index |= 2
         if point.z >= origin.z: index |= 1

@@ -15,6 +15,7 @@ from OpenGL import GL
 from ..data import cube
 from .. import core
 from ..core import octree
+from . import blocks
 
 from ..core.logger import *
 
@@ -220,6 +221,21 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
                 result.extend(child_collisions)
         return result
 
+    def _get_blocks(self, info, bbox, exclude):
+        this_bbox = self._get_bbox(info)
+        collision = this_bbox.intersection(bbox)
+        blocks = []
+        if collision:
+            for child, child_info in self.iter_children_info(info):
+                blocks.extend(child._get_blocks(child_info, bbox, exclude))
+        return blocks
+
+    def _get_block(self, info, point):
+        index = self._child_index_closest_to_point(info, point)
+        child = self.child(index)
+        child_info = self._get_child_info(info, index)
+        return child._get_block(child_info, point)
+
 class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
     # def _render(self, info, shader):
     #     if not self.data():
@@ -318,9 +334,25 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
         this_bbox = self._get_bbox(info)
         collision = this_bbox.intersection(bbox)
         if collision:
-            return [(collision, this_bbox)]
+            return [(collision, self._get_block(info))]
         else:
             return []
+
+    def _get_blocks(self, info, bbox, exclude):
+        block_cls = info['game'].get_block_cls(self.data())
+        if block_cls in exclude:
+            return []
+
+        this_bbox = self._get_bbox(info)
+        collision = this_bbox.intersection(bbox)
+        if collision:
+            return [block_cls(info['game'], self, info)]
+        else:
+            return []
+
+    def _get_block(self, info, *args, **kwargs):
+        block_cls = info['game'].get_block_cls(self.data())
+        return block_cls(info['game'], self, info)
 
 class World(octree.Octree, WorldOctreeInterior):
     def __init__(self, game, size):
@@ -483,4 +515,13 @@ class World(octree.Octree, WorldOctreeInterior):
 
     def get_collisions(self, bbox):
         return self._get_collisions(self._get_info(), bbox)
+
+    def get_blocks(self, bbox, exclude=[blocks.Air]):
+        return self._get_blocks(self._get_info(), bbox, exclude)
+
+    def get_block(self, point):
+        bounds = self.size() / 2.0
+        if x > bounds or z > bounds or y > bounds:
+            return None
+        return self._get_block(self._get_info(), point)
 

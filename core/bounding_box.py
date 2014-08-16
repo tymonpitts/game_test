@@ -88,3 +88,10 @@ class BoundingBox(object):
         if self._max.z <= other._min.z: return False # self is behind other
         if self._min.z >= other._max.z: return False # self is in front of other
         return True # boxes overlap
+
+    def translate(self, pos):
+        bbox = self.copy()
+        bbox._min += pos
+        bbox._max += pos
+        return bbox
+

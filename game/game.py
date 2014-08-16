@@ -99,6 +99,9 @@ class Game(object):
             current_id = next_id
             print '    registered states: %s' % num_ids
 
+    def get_block_cls(self, id):
+        return self.block_ids_to_cls[id]
+
     def retrieve_mouse_data(self):
         window_size = glfw.GetWindowSize()
         window_center = [window_size[0] / 2, window_size[1] / 2]
