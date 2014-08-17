@@ -73,6 +73,9 @@ class AbstractVector(object):
     def __setitem__(self, index, value):
         self._data.itemset(0, index, value)
 
+    def __neg__(self):
+        return (self * -1.0)
+
     def __add__(self, other):
         data = numpy.add(self._data, other._data)
         data.itemset(0, 3, self.w)
