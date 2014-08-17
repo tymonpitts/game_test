@@ -236,6 +236,14 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
         child_info = self._get_child_info(info, index)
         return child._get_block(child_info, point)
 
+    def _is_grounded(self, info, bbox):
+        this_bbox = self._get_bbox(info)
+        if this_bbox.collides(bbox, inclusive=[1]):
+            for child, child_info in self.iter_children_info(info):
+                if child._is_grounded(child_info, bbox):
+                    return True
+        return False
+
 class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
     # def _render(self, info, shader):
     #     if not self.data():
@@ -353,6 +361,15 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
     def _get_block(self, info, *args, **kwargs):
         block_cls = info['game'].get_block_cls(self.data())
         return block_cls(info['game'], self, info)
+
+    def _is_grounded(self, info, bbox):
+        block_cls = info['game'].get_block_cls(self.data())
+        if not block_cls.is_solid():
+            return False
+
+        this_bbox = self._get_bbox(info)
+        return this_bbox.collides(bbox, inclusive=[1])
+
 
 class World(octree.Octree, WorldOctreeInterior):
     def __init__(self, game, size):
@@ -516,14 +533,16 @@ class World(octree.Octree, WorldOctreeInterior):
     def get_collisions(self, bbox):
         return self._get_collisions(self._get_info(), bbox)
 
-    def get_blocks(self, bbox, exclude_types=[blocks.Air], inclusive=False):
+    def get_blocks(self, bbox, exclude_types=[blocks.Air], inclusive=[]):
         """Retrieve a list of blocks contained within *bbox*
 
         :param bbox: The area to retrieve blocks from.
         :type bbox: :class:`.BoundingBox`
         :param exclude_types: A list of block types to exclude from the returned value.
         :type exclude_types: list of :class:`.AbstractBlock` types
-        :param bool inclusive: Whether or not to include blocks that touch the edges of *bbox*
+        :param inclusive: Whether or not to include blocks that touch the edges of *bbox*.
+            The elements in this list determine which components are inclusive
+        :type inclusive: list of int
 
         :rtype: list of :class:`.AbstractBlock` instances
         """
@@ -534,4 +553,7 @@ class World(octree.Octree, WorldOctreeInterior):
         if point.x > bounds or point.z > bounds or point.y > bounds:
             return None
         return self._get_block(self._get_info(), point)
+
+    def is_grounded(self, bbox):
+        return self._is_grounded(self._get_info(), bbox)
 

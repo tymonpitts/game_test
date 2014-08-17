@@ -112,8 +112,7 @@ class Player(core.AbstractCamera):
             # determine if we are grounded or in the air
             #
             bbox = self._get_bbox_at_pos(self._pos)
-            blocks = self.game().world.get_blocks(bbox, inclusive=True)
-            self._grounded = bool(blocks)
+            self._grounded = self.game().world.is_grounded(bbox)
 
         # resolve xform components to a full matrix
         #

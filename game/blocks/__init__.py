@@ -65,6 +65,10 @@ class AbstractBlock(object):
         # result['test'] = range(10)
         # return result
 
+    @classmethod
+    def is_solid(cls):
+        return True
+
     def origin(self):
         return self._origin.copy()
 
@@ -92,7 +96,8 @@ class AbstractBlock(object):
         offset = core.Vector([half_size]*3)
         min_ = self._origin - offset
         max_ = self._origin + offset
-        collision_box = core.BoundingBox(min_, max_).intersection(bbox)
+        this_bbox = core.BoundingBox(min_, max_)
+        collision_box = this_bbox.intersection(bbox)
 
         # get a before and after position
         #
@@ -163,7 +168,9 @@ class AbstractBlock(object):
         return t, component_index
 
 class Air(AbstractBlock):
-    pass
+    @classmethod
+    def is_solid(cls):
+        return False
 
 class Rock(AbstractBlock):
     TopConnected    = int('000001', 2)
