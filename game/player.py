@@ -81,6 +81,7 @@ class Player(core.AbstractCamera):
             start_pos = self._pos
             first_loop = True
             count = 0
+            colliding_components = []
             while first_loop or solution_component is not None:
                 first_loop = False
                 if count > 3:
@@ -92,6 +93,7 @@ class Player(core.AbstractCamera):
                 solution_t, solution_component = self.solve_collision(start_pos, self.velocity)
                 if solution_component is None: # no collisions
                     break
+                colliding_components.append(solution_component)
 
                 # prep the start position for another collision test by 
                 # moving it to the last point of collision
@@ -107,7 +109,11 @@ class Player(core.AbstractCamera):
 
             # set the new position
             #
+            previous_pos = self._pos.copy()
             self._pos = start_pos + self.velocity
+            self.velocity = self._pos - previous_pos
+            for component in colliding_components:
+                self.velocity[component] = 0.0
 
             # determine if we are grounded or in the air
             #

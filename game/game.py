@@ -198,7 +198,8 @@ class Game(object):
                 if (cur_time - last_fps_time) >= 1.0:
                     last_fps_time = cur_time
                     self.do_printing = True
-                    # print 'fps:',fps
+                    if fps < 60:
+                        print 'fps:',fps
                     # print 'mouse_movement:',str(self.mouse_movement)
                     # print 'camera_mat:'
                     # print self.player.matrix
