@@ -98,6 +98,8 @@ class AbstractBlock(object):
         max_ = self._origin + offset
         this_bbox = core.BoundingBox(min_, max_)
         collision_box = this_bbox.intersection(bbox)
+        if not collision_box:
+            return 1.0, None
 
         # get a before and after position
         #

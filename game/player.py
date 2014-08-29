@@ -82,7 +82,17 @@ class Player(core.AbstractCamera):
             first_loop = True
             count = 0
             colliding_components = []
-            while first_loop or solution_component is not None:
+
+            # get colliding blocks
+            #
+            bbox1 = self._get_bbox_at_pos(start_pos)
+            bbox2 = self._get_bbox_at_pos(start_pos + self.velocity)
+            bbox = core.BoundingBox()
+            bbox.bbox_expand(bbox1)
+            bbox.bbox_expand(bbox2)
+            blocks = self.game().world.get_blocks(bbox)
+
+            while blocks and (first_loop or solution_component is not None):
                 first_loop = False
                 if count > 3:
                     print count
@@ -90,7 +100,7 @@ class Player(core.AbstractCamera):
 
                 # solve for collisions
                 #
-                solution_t, solution_component = self.solve_collision(start_pos, self.velocity)
+                solution_t, solution_component = self.solve_collision(start_pos, self.velocity, blocks)
                 if solution_component is None: # no collisions
                     break
                 colliding_components.append(solution_component)
@@ -129,24 +139,20 @@ class Player(core.AbstractCamera):
         if 'P' in self.game().pressed_keys:
             print 'pos:', self._pos
 
-    def solve_collision(self, start_pos=None, velocity=None):
+    def solve_collision(self, start_pos=None, velocity=None, blocks=None):
         if start_pos is None:
             start_pos = self._pos
         if velocity is None:
             velocity = core.Vector()
 
-        pos1 = start_pos
-        pos2 = start_pos + velocity
-
-        # detect collisions
-        #
-        bbox1 = self._get_bbox_at_pos(pos1)
-        bbox2 = self._get_bbox_at_pos(pos2)
-        bbox = core.BoundingBox()
-        bbox.bbox_expand(bbox1)
-        bbox.bbox_expand(bbox2)
-
-        blocks = self.game().world.get_blocks(bbox)
+        bbox1 = self._get_bbox_at_pos(start_pos)
+        if blocks is None:
+            pos2 = start_pos + velocity
+            bbox2 = self._get_bbox_at_pos(pos2)
+            bbox = core.BoundingBox()
+            bbox.bbox_expand(bbox1)
+            bbox.bbox_expand(bbox2)
+            blocks = self.game().world.get_blocks(bbox)
 
         # solve collisions for each block and use the solution with 
         # the smallest resulting velocity
