@@ -80,7 +80,6 @@ class Player(core.AbstractCamera):
             # print 'velocity:', self.velocity
             start_pos = self._pos
             first_loop = True
-            count = 0
             colliding_components = []
 
             # get colliding blocks
@@ -94,9 +93,6 @@ class Player(core.AbstractCamera):
 
             while blocks and (first_loop or solution_component is not None):
                 first_loop = False
-                if count > 3:
-                    print count
-                count += 1
 
                 # solve for collisions
                 #
@@ -121,6 +117,7 @@ class Player(core.AbstractCamera):
             #
             previous_pos = self._pos.copy()
             self._pos = start_pos + self.velocity
+            self._pos.round()
             self.velocity = self._pos - previous_pos
             for component in colliding_components:
                 self.velocity[component] = 0.0

@@ -78,6 +78,13 @@ class AbstractBlock(object):
     def size(self):
         return self._size
 
+    def bbox(self):
+        half_size = self.size() * 0.5
+        offset = core.Vector([half_size]*3)
+        min_ = self._origin - offset
+        max_ = self._origin + offset
+        return core.BoundingBox(min_, max_)
+
     def solve_collision(self, start_bbox, acceleration=None):
         # calculate a bounding box that encompasses the start/end bounding boxes
         #
@@ -92,12 +99,7 @@ class AbstractBlock(object):
 
         # intersect this block's bounding box with the full movement bounding box
         #
-        half_size = self.size() * 0.5
-        offset = core.Vector([half_size]*3)
-        min_ = self._origin - offset
-        max_ = self._origin + offset
-        this_bbox = core.BoundingBox(min_, max_)
-        collision_box = this_bbox.intersection(bbox)
+        collision_box = self.bbox().intersection(bbox)
         if not collision_box:
             return 1.0, None
 
@@ -134,10 +136,10 @@ class AbstractBlock(object):
             #
             if before[i] < collision_box._min[i]:
                 component = collision_box._min[i]
-                component -= start_bbox.get_dimension(i) / 2
+                component -= start_bbox.get_dimension(i) / 2.0
             elif before[i] > collision_box._max[i]:
                 component = collision_box._max[i]
-                component += start_bbox.get_dimension(i) / 2
+                component += start_bbox.get_dimension(i) / 2.0
             else:
                 continue
 

@@ -61,6 +61,9 @@ class AbstractVector(object):
     def w(self, value):
         self[3] = value
 
+    def round(self, decimals=6):
+        numpy.round(self._data, decimals, self._data)
+
     def tolist(self):
         return self._data.tolist()[0]
 
