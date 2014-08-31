@@ -15,6 +15,7 @@ from .. import core
 class Player(core.AbstractCamera):
     def __init__(self, *args, **kwargs):
         super(Player, self).__init__(*args, **kwargs)
+        self.mass = 65.0 # kilograms
 
         self.eye_level = 1.7
         # self.height = 1.75
@@ -22,11 +23,9 @@ class Player(core.AbstractCamera):
         # self.depth = 0.25
         self.bbox = core.BoundingBox([-0.25, 0.0, -0.25], [0.25, 1.75, 0.25])
 
-        self.max_walking_speed = 3.0
-        self.walking_acceleration = 1.0
-        # self.walking_acceleration = 0.2 # number of secs to reach top speed
-
-        self.jump_force = 1.0
+        self.max_walking_speed = 3.0 # meters per second
+        self.walking_force = self.mass * 2.0  # F = mass * acceleration (meters per second per second)
+        self.jump_force = self.mass * 60.0 # F = mass * acceleration; average human a=30.0
 
         self.velocity = core.Vector()
         self._grounded = True
@@ -67,17 +66,30 @@ class Player(core.AbstractCamera):
         # convert input to an acceleration vector
         #
         if self._grounded:
-            acceleration = self._update_for_ground(ry)
+            acceleration = self._get_acceleration_on_ground(ry)
         else:
-            acceleration = self._update_for_air(ry)
-        self.velocity = self.velocity + acceleration
+            acceleration = self._get_acceleration_in_air(ry)
+        velocity = self.velocity + (acceleration * self.game().elapsed_time / 2.0)
 
-        # if we have acceleration, perform collision detection 
-        # and adjust the acceleration vector accordingly
+        # clamp horizontal velocity to max_walking_speed
         #
-        velocity_length = self.velocity.length()
+        velocity_length = velocity.length()
         if velocity_length:
-            # print 'velocity:', self.velocity
+            h_velocity = velocity.copy()
+            h_velocity[1] = 0.0
+            h_velocity_length = h_velocity.length()
+            max_walking_speed = self.max_walking_speed / self.game().elapsed_time
+            if h_velocity_length > max_walking_speed:
+                h_velocity_length = max_walking_speed
+                h_velocity.normalize()
+                h_velocity *= h_velocity_length
+                velocity = Vector([h_velocity[0], velocity[1], h_velocity[2]])
+
+        # if we have velocity, perform collision detection 
+        # and adjust the velocity vector accordingly
+        #
+        velocity_length = velocity.length()
+        if velocity_length:
             start_pos = self._pos
             first_loop = True
             colliding_components = []
@@ -85,18 +97,22 @@ class Player(core.AbstractCamera):
             # get colliding blocks
             #
             bbox1 = self._get_bbox_at_pos(start_pos)
-            bbox2 = self._get_bbox_at_pos(start_pos + self.velocity)
+            bbox2 = self._get_bbox_at_pos(start_pos + velocity)
             bbox = core.BoundingBox()
             bbox.bbox_expand(bbox1)
             bbox.bbox_expand(bbox2)
             blocks = self.game().world.get_blocks(bbox)
 
+            count = 0
             while blocks and (first_loop or solution_component is not None):
                 first_loop = False
+                if count > 3:
+                    raise Exception('infinite collision loop')
+                count += 1
 
                 # solve for collisions
                 #
-                solution_t, solution_component = self.solve_collision(start_pos, self.velocity, blocks)
+                solution_t, solution_component = self.solve_collision(start_pos, velocity, blocks)
                 if solution_component is None: # no collisions
                     break
                 colliding_components.append(solution_component)
@@ -104,19 +120,19 @@ class Player(core.AbstractCamera):
                 # prep the start position for another collision test by 
                 # moving it to the last point of collision
                 #
-                start_pos = start_pos + (self.velocity * solution_t)
+                start_pos = start_pos + (velocity * solution_t)
 
                 # calculate the remaining velocity
                 # 
                 velocity_length -= (velocity_length * solution_t)
-                self.velocity = self.velocity.normal() * velocity_length
-                self.velocity[solution_component] = 0.0
-                velocity_length = self.velocity.length()
+                velocity = velocity.normal() * velocity_length
+                velocity[solution_component] = 0.0
+                velocity_length = velocity.length()
 
             # set the new position
             #
             previous_pos = self._pos.copy()
-            self._pos = start_pos + self.velocity
+            self._pos = start_pos + velocity
             self._pos.round()
             self.velocity = self._pos - previous_pos
             for component in colliding_components:
@@ -170,155 +186,58 @@ class Player(core.AbstractCamera):
         bbox._max += pos
         return bbox
 
-    def _update_for_ground(self, ry):
-        acceleration = core.Vector()
+    def _get_acceleration_on_ground(self, ry):
+        # static_friction_coefficient = 1.0
+        # kinetic_friction_coefficient = 0.8
+        # friction_normal_force = self.mass * 9.81
+        # velocity_length = self.velocity.length()
+        # if not velocity_length:
+        #     max_frictional_force = static_friction_coefficient * friction_normal_force
+        # else:
+        #     max_frictional_force = kinetic_friction_coefficient * friction_normal_force
+
+        force = core.Vector()
         if 'W' in self.game().pressed_keys:
-            acceleration.z += 1.0
+            force.z += 1.0
         if 'S' in self.game().pressed_keys:
-            acceleration.z -= 1.0
+            force.z -= 1.0
         if 'A' in self.game().pressed_keys:
-            acceleration.x += 1.0
+            force.x += 1.0
         if 'D' in self.game().pressed_keys:
-            acceleration.x -= 1.0
-        acceleration.normalize()
-        acceleration *= ry
-        if acceleration.length():
-            magnitude = self.walking_acceleration * self.game().elapsed_time
+            force.x -= 1.0
+        if force.length():
+            force.normalize()
+            force = force.normal() * self.walking_force
+            force *= ry
         else:
-            magnitude = 0.0
+            vel_force = self.velocity.length() * self.mass
+            if not vel_force:
+                pass
+            elif vel_force < self.walking_force:
+                force = self.velocity.normal() * -vel_force
+            else:
+                force = self.velocity.normal() * -(vel_force - self.walking_force)
 
-        # limit the acceleration so that max speed is not exceeded
-        #
-        accelerating = (self.velocity.dot(acceleration) > 0)
-        current_speed = self.velocity.length()
-        if accelerating:
-            new_speed = current_speed + magnitude
-            if new_speed > self.max_walking_speed:
-                # TODO: this logic is not complete.  Does not account for 
-                # velocity already being higher than the max walking speed
-                overshoot_amount = new_speed - self.max_walking_speed
-                magnitude = magnitude - overshoot_amount
-
-        # if we have no acceleration but we do have velocity, 
-        # then we need to decelerate and the deceleration must 
-        # not cause the velocity to invert it's direction (clamp to 0)
-        #
-        elif not magnitude and current_speed:
-            acceleration = -self.velocity.normal()
-            magnitude = self.walking_acceleration * self.game().elapsed_time
-            # make sure this deceleration does not make velocity go negative
-            if magnitude > current_speed:
-                magnitude = current_speed
-
-        # apply magnitude to acceleration vector
-        #
-        acceleration *= magnitude
-
-        # add jumping force to the acceleration
+        # add jumping force
         #
         if ' ' in self.game().pressed_keys:
-            acceleration.y += self.jump_force
-        return acceleration
+            force.y += self.jump_force
 
-    def _update_for_air(self, ry):
-        acceleration = core.Vector()
+        return (force / self.mass)
+
+    def _get_acceleration_in_air(self, ry):
+        force = core.Vector()
         if 'W' in self.game().pressed_keys:
-            acceleration.z += 1.0
+            force.z += 1.0
         if 'S' in self.game().pressed_keys:
-            acceleration.z -= 1.0
+            force.z -= 1.0
         if 'A' in self.game().pressed_keys:
-            acceleration.x += 1.0
+            force.x += 1.0
         if 'D' in self.game().pressed_keys:
-            acceleration.x -= 1.0
-        acceleration.normalize()
-        acceleration *= ry
-        magnitude = self.walking_acceleration * self.game().elapsed_time
-
-        # apply magnitude to acceleration vector
-        #
-        acceleration *= magnitude
-
-        # apply gravity
-        #
-        acceleration.y -= 9.81 * self.game().elapsed_time
-        return acceleration
-
-
-
-    #     # get a before and after position
-    #     #
-    #     before = self._pos.copy()
-    #     after = before + self.acceleration
-
-    #     # check that the requested movement is valid
-    #     #
-    #     bbox = self.bbox.copy()
-    #     bbox._min += after
-    #     bbox._max += after
-    #     collision = self.world().get_collision(bbox)
-    #     if collision:
-    #         t = self.acceleration.magnitude()
-    #         for i in xrange(3):
-    #             component = collision.get_dimension(i) / 2
-    #             component += bbox.get_dimension(i) / 2
-    #             if self.acceleration[i] < 0:
-    #                 component = -component
-    #             this_t = (component - before[i]) / after[i]
-    #             t = min(t, this_t)
-    #         acceleration = self.acceleration.normal() * t
-    #         after = self._pos + acceleration
-
-    #     self._pos = after
-
-    # def handle_input(self, pressed_keys, mouse_move):
-    #     # add mouse_move to rotation values
-    #     # 
-    #     self._rotx += mouse_move[1]
-    #     self._rotx = self.clamp_angle(self._rotx)
-    #     self._roty -= mouse_move[0]
-
-    #     # convert pressed keys into a movement direction
-    #     #
-    #     acceleration = core.Vector()
-    #     if 'W' in pressed_keys:
-    #         acceleration.z += 1.0
-    #     if 'S' in pressed_keys:
-    #         acceleration.z -= 1.0
-    #     if 'A' in pressed_keys:
-    #         acceleration.x += 1.0
-    #     if 'D' in pressed_keys:
-    #         acceleration.x -= 1.0
-    #     # if ' ' in pressed_keys:
-    #     #     acceleration.y += self.movement_speed
-
-    #     # make the length of movement vector equal to the movement speed
-    #     #
-    #     acceleration.normalize()
-    #     acceleration *= self.movement_speed
-    #     if glfw.KEY_LSHIFT in pressed_keys:
-    #         acceleration *= 0.1
-
-    #     # rotate the movement vector relative to 
-    #     # the current facing direction
-    #     #
-    #     r_sy = math.sin(self._roty)
-    #     r_cy = math.cos(self._roty)
-    #     ry = core.Matrix()
-    #     ry[0,0] = r_cy
-    #     ry[0,2] = -r_sy
-    #     ry[2,0] = r_sy
-    #     ry[2,2] = r_cy
-
-    #     acceleration = acceleration * ry
-
-    #     # add the movement direction to the acceleration for this frame
-    #     #
-    #     self.acceleration += acceleration
-
-    #     # self.last_movement = acceleration
-    #     # self._trans += acceleration
-
-    #     # self.matrix = rx * ry
-    #     # for i in xrange(3):
-    #     #     self.matrix[3,i] = self._trans[i]
+            force.x -= 1.0
+        force.normalize()
+        force *= ry
+        force *= self.walking_force # apply force magnitude
+        force[1] -= self.mass * 9.81 # apply gravity
+        return (force / self.mass) # a = f/m
 
