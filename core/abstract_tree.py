@@ -39,7 +39,7 @@ class AbstractTreeInterior(AbstractTreeBase):
         if copy:
             info = info.copy()
             info['origin'] = info['origin'].copy()
-            info['parents'] = list(info.get('parents', []))
+            info['parents'] = list(info['parents'])
         info['level'] += 1
         info['size'] *= 0.5
         info['index'] = index
@@ -116,6 +116,7 @@ class AbstractTree(AbstractTreeInterior):
         info['level'] = 1
         info['size'] = self.size()
         info['origin'] = self.origin()
+        info['parents'] = [self]
         return info
 
     def origin(self):
