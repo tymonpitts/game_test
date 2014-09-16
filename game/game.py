@@ -18,8 +18,6 @@ from . import World
 
 class Game(object):
     def __init__(self):
-        self.elapsed_time = 0.0
-        self.start_time = None
         self.mouse_movement = (0.0,0.0)
 
         self.pressed_keys = set()
@@ -111,9 +109,9 @@ class Game(object):
 
         glfw.SetMousePos(*window_center)
 
-    def update(self):
-        self.player.update()
-        # self.collider.update(self)
+    def integrate(self, t, delta_time):
+        self.retrieve_mouse_data()
+        self.player.update(t, delta_time)
 
     def keyboard(self, key, press):
         if key == glfw.KEY_ESC:
@@ -188,28 +186,43 @@ class Game(object):
         glfw.SetKeyCallback(self.keyboard)
 
         fps = 0
-        self.start_time = last_time = last_fps_time = time.time()
+        t = 0.0
+        current_time = time.time()
+        delta_time = 1.0 / 60.0
+        accumulator = 0.0
         while glfw.GetWindowParam(glfw.OPENED):
             try:
-                cur_time = time.time()
-                self.elapsed_time = cur_time - last_time
-                last_time = cur_time
+                # get elapsed time
+                #
+                new_time = time.time()
+                elapsed_time = new_time - current_time
+                if elapsed_time > 0.25:
+                    elapsed_time = 0.25
+                current_time = new_time
 
-                if (cur_time - last_fps_time) >= 1.0:
-                    last_fps_time = cur_time
-                    self.do_printing = True
-                    if fps < 60:
-                        print 'fps:',fps
-                    # print 'mouse_movement:',str(self.mouse_movement)
-                    # print 'camera_mat:'
-                    # print self.player.matrix
-                    fps = 0
-                else:
-                    self.do_printing = False
-                fps += 1
+                # compute for every delta time
+                #
+                accumulator += elapsed_time
+                while accumulator >= delta_time:
+                    self.integrate(t, delta_time)
+                    t += delta_time
+                    accumulator -= delta_time
 
-                self.retrieve_mouse_data()
-                self.update()
+                # TODO: implement interpolator to fix temporal aliasing
+
+                # if (cur_time - last_fps_time) >= 1.0:
+                #     last_fps_time = cur_time
+                #     self.do_printing = True
+                #     if fps < 60:
+                #         print 'fps:',fps
+                #     # print 'mouse_movement:',str(self.mouse_movement)
+                #     # print 'camera_mat:'
+                #     # print self.player.matrix
+                #     fps = 0
+                # else:
+                #     self.do_printing = False
+                # fps += 1
+
                 self.display()
             except:
                 glfw.Terminate()

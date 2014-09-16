@@ -54,7 +54,7 @@ class Player(core.AbstractCamera):
         offset[3,2]=-5.0
         return offset * self.matrix
 
-    def update(self):
+    def update(self, time, delta_time):
         # add mouse_move to rotation values
         # 
         self._rotx += self.game().mouse_movement[1]
@@ -69,7 +69,7 @@ class Player(core.AbstractCamera):
             acceleration = self._get_acceleration_on_ground(ry)
         else:
             acceleration = self._get_acceleration_in_air(ry)
-        velocity = self.velocity + (acceleration * self.game().elapsed_time / 2.0)
+        velocity = self.velocity + (acceleration * delta_time / 2.0)
 
         # clamp horizontal velocity to max_walking_speed
         #
@@ -78,7 +78,7 @@ class Player(core.AbstractCamera):
             h_velocity = velocity.copy()
             h_velocity[1] = 0.0
             h_velocity_length = h_velocity.length()
-            max_walking_speed = self.max_walking_speed / self.game().elapsed_time
+            max_walking_speed = self.max_walking_speed / delta_time
             if h_velocity_length > max_walking_speed:
                 h_velocity_length = max_walking_speed
                 h_velocity.normalize()
