@@ -142,19 +142,16 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
         top_node._mesh_times['get_child_info: misc'] += time.time() - stime
 
         stime = time.time()
-        offset = core.Vector()
-        top_node._mesh_times['get_child_info: create offset vector'] += time.time() - stime
-        stime = time.time()
-        offset.x = 0.5 if index&4 else -0.5
-        offset.y = 0.5 if index&2 else -0.5
-        offset.z = 0.5 if index&1 else -0.5
+        half_size = info['size'] * 0.5
+        offset = [0.0, 0.0, 0.0]
+        offset[0] = half_size if index&4 else -half_size
+        offset[1] = half_size if index&2 else -half_size
+        offset[2] = half_size if index&1 else -half_size
         top_node._mesh_times['get_child_info: get offset'] += time.time() - stime
 
         stime = time.time()
-        offset *= info['size']
-        top_node._mesh_times['get_child_info: mult offset'] += time.time() - stime
-        stime = time.time()
-        info['origin'] += offset
+        for i, component in enumerate(offset):
+            info['origin'][i] += component
         top_node._mesh_times['get_child_info: add offset'] += time.time() - stime
 
         return info
@@ -167,9 +164,7 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
         indices = []
         # for child, child_info in self.iter_children_info(info):
         for index, child in enumerate(self._children):
-            # stime = time.time()
             child_info = self._get_child_info__debug(info, index)
-            # top_node._mesh_times['get_child_info'] += time.time() - stime
             result = child._generate_mesh(child_info)
             if result is None:
                 continue
@@ -372,7 +367,9 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
         # generate mesh data for this point
         #
         stime = time.time()
-        origin = info['origin']
+        origin_x = info['origin'].x
+        origin_y = info['origin'].y
+        origin_z = info['origin'].z
         size = info['size']
         normals = info['cube'].NORMALS
         VERTS = info['cube'].VERTICES
@@ -384,9 +381,9 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
             # verts.append(vert.x)
             # verts.append(vert.y)
             # verts.append(vert.z)
-            verts.append(origin.x + VERTS[i] * size)
-            verts.append(origin.y + VERTS[i+1] * size)
-            verts.append(origin.z + VERTS[i+2] * size)
+            verts.append(origin_x + VERTS[i] * size)
+            verts.append(origin_y + VERTS[i+1] * size)
+            verts.append(origin_z + VERTS[i+2] * size)
         top_node._mesh_times['generating_verts'] += time.time() - stime
 
         stime = time.time()
@@ -454,9 +451,7 @@ class World(octree.Octree, WorldOctreeInterior):
         self._mesh_times['get_child_info: copy origin'] = 0.0
         self._mesh_times['get_child_info: copy parents'] = 0.0
         self._mesh_times['get_child_info: misc'] = 0.0
-        self._mesh_times['get_child_info: create offset vector'] = 0.0
         self._mesh_times['get_child_info: get offset'] = 0.0
-        self._mesh_times['get_child_info: mult offset'] = 0.0
         self._mesh_times['get_child_info: add offset'] = 0.0
         self._mesh_times['should_generate_mesh'] = 0.0
         self._mesh_times['gathering_info'] = 0.0

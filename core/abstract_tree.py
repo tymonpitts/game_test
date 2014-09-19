@@ -45,13 +45,14 @@ class AbstractTreeInterior(AbstractTreeBase):
         info['index'] = index
         info['parents'].append(self)
 
-        offset = Vector()
-        offset.x = 0.5 if index&4 else -0.5
-        offset.y = 0.5 if index&2 else -0.5
-        offset.z = 0.5 if index&1 else -0.5
+        half_size = info['size'] * 0.5
+        offset = [0.0, 0.0, 0.0]
+        offset[0] = half_size if index&4 else -half_size
+        offset[1] = half_size if index&2 else -half_size
+        offset[2] = half_size if index&1 else -half_size
 
-        offset *= info['size']
-        info['origin'] += offset
+        for i, component in enumerate(offset):
+            info['origin'][i] += component
 
         return info
 
