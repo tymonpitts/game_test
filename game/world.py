@@ -156,25 +156,24 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
 
         return info
 
-
     def _generate_mesh(self, info):
         top_node = info['parents'][0]
         verts = []
         normals = []
         indices = []
-        # for child, child_info in self.iter_children_info(info):
-        for index, child in enumerate(self._children):
-            child_info = self._get_child_info__debug(info, index)
+        for child, child_info in self.iter_children_info(info):
+        # for index, child in enumerate(self._children):
+        #     child_info = self._get_child_info__debug(info, index)
             result = child._generate_mesh(child_info)
             if result is None:
                 continue
-            stime = time.time()
+            # stime = time.time()
             c_verts, c_normals, c_indices = result
             info['index_offset'] += len(c_verts)/3
             verts.extend(c_verts)
             normals.extend(c_normals)
             indices.extend(c_indices)
-            top_node._mesh_times['extending_arrays'] += time.time() - stime
+            # top_node._mesh_times['extending_arrays'] += time.time() - stime
         return verts, normals, indices
 
     def _init_column_from_height_map(self, info, values, indices, min_height, max_height, origin):
@@ -358,23 +357,23 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
 
     def _generate_mesh(self, info):
         top_node = info['parents'][0]
-        stime = time.time()
+        # stime = time.time()
         should_generate_mesh = self._should_generate_mesh(info)
-        top_node._mesh_times['should_generate_mesh'] += time.time() - stime
+        # top_node._mesh_times['should_generate_mesh'] += time.time() - stime
         if not should_generate_mesh:
             return
 
         # generate mesh data for this point
         #
-        stime = time.time()
+        # stime = time.time()
         origin_x = info['origin'].x
         origin_y = info['origin'].y
         origin_z = info['origin'].z
         size = info['size']
         normals = info['cube'].NORMALS
         VERTS = info['cube'].VERTICES
-        top_node._mesh_times['gathering_info'] += time.time() - stime
-        stime = time.time()
+        # top_node._mesh_times['gathering_info'] += time.time() - stime
+        # stime = time.time()
         verts = []
         for i in xrange(0, len(VERTS), 3):
             # vert = origin + core.Vector([VERTS[i], VERTS[i+1], VERTS[i+2]]) * size
@@ -384,11 +383,11 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
             verts.append(origin_x + VERTS[i] * size)
             verts.append(origin_y + VERTS[i+1] * size)
             verts.append(origin_z + VERTS[i+2] * size)
-        top_node._mesh_times['generating_verts'] += time.time() - stime
+        # top_node._mesh_times['generating_verts'] += time.time() - stime
 
-        stime = time.time()
+        # stime = time.time()
         indices = [i + info['index_offset'] for i in info['cube'].INDICES]
-        top_node._mesh_times['generating_indices'] += time.time() - stime
+        # top_node._mesh_times['generating_indices'] += time.time() - stime
         return verts, normals, indices
 
     def _get_collisions(self, info, bbox):
@@ -446,29 +445,30 @@ class World(octree.Octree, WorldOctreeInterior):
         # print 'debugging time:', (time.time() - stime)
 
         stime = time.time()
-        self._mesh_times = OrderedDict()
-        self._mesh_times['get_child_info: copy'] = 0.0
-        self._mesh_times['get_child_info: copy origin'] = 0.0
-        self._mesh_times['get_child_info: copy parents'] = 0.0
-        self._mesh_times['get_child_info: misc'] = 0.0
-        self._mesh_times['get_child_info: get offset'] = 0.0
-        self._mesh_times['get_child_info: add offset'] = 0.0
-        self._mesh_times['should_generate_mesh'] = 0.0
-        self._mesh_times['gathering_info'] = 0.0
-        self._mesh_times['generating_verts'] = 0.0
-        self._mesh_times['generating_indices'] = 0.0
-        self._mesh_times['extending_arrays'] = 0.0
-        self._mesh_times['creating_mesh'] = 0.0
+        # self._mesh_times = OrderedDict()
+        # self._mesh_times['get_child_info: copy'] = 0.0
+        # self._mesh_times['get_child_info: copy origin'] = 0.0
+        # self._mesh_times['get_child_info: copy parents'] = 0.0
+        # self._mesh_times['get_child_info: misc'] = 0.0
+        # self._mesh_times['get_child_info: get offset'] = 0.0
+        # self._mesh_times['get_child_info: add offset'] = 0.0
+        # self._mesh_times['should_generate_mesh'] = 0.0
+        # self._mesh_times['gathering_info'] = 0.0
+        # self._mesh_times['generating_verts'] = 0.0
+        # self._mesh_times['generating_indices'] = 0.0
+        # self._mesh_times['extending_arrays'] = 0.0
+        # self._mesh_times['creating_mesh'] = 0.0
         self._generate_mesh()
         total_time = time.time() - stime
-        print 'mesh generation times:'
-        accounted_time = 0.0
-        for key, value in self._mesh_times.iteritems():
-            print '  %s:' % key, value
-            accounted_time += value
+        # print 'mesh generation times:'
+        # accounted_time = 0.0
+        # for key, value in self._mesh_times.iteritems():
+        #     print '  %s:' % key, value
+        #     accounted_time += value
 
-        print '  unaccounted for:', (total_time - accounted_time)
-        print '  TOTAL:', total_time
+        # print '  unaccounted for:', (total_time - accounted_time)
+        # print '  TOTAL:', total_time
+        print 'mesh generation time:', total_time
 
     def game(self):
         return self._game
@@ -576,9 +576,9 @@ class World(octree.Octree, WorldOctreeInterior):
         info['cube'] = cube
         info['index_offset'] = 0
         verts, normals, indices = super(World, self)._generate_mesh(info)
-        stime = time.time()
+        # stime = time.time()
         self.mesh = core.Mesh(verts, normals, indices, GL.GL_TRIANGLES)
-        self._mesh_times['creating_mesh'] = time.time() - stime
+        # self._mesh_times['creating_mesh'] = time.time() - stime
 
     def _init_from_height_map(self, values):
         super(World, self)._init_from_height_map(self._get_info(), values)
