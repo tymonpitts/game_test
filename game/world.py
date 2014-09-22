@@ -113,14 +113,6 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
         child2 = self.child(index2)
         return child2._get_height(self._get_child_info(info, index2), x, z)
 
-    def _should_neighbor_generate_mesh(self, info, indices):
-        for index in indices:
-            child = self.child(index)
-            child_info = self._get_child_info(info)
-            if _should_neighbor_generate_mesh(child_info, indices):
-                return True
-        return False
-
     def _get_child_info__debug(self, info, index, copy=True):
         top_node = info['parents'][0]
 
@@ -317,49 +309,12 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
             return None
         return info['origin'].y+(info['size'] / 2.0)
 
-    def _should_neighbor_generate_mesh(self, info, indices):
-        return not bool(self.data())
-
-    def _should_generate_mesh__check_neighbor(self, info, axis, direction, indices):
-        """check if this neighbor is transparent
-        """
-        origin = info['origin']
-        size = info['size']
-
-        point = origin.copy()
-        point[axis] += size*direction
-        obj, obj_info = info['parents'][0].get_point(point)
-
-        if obj is None:
-            return True
-        elif obj._should_neighbor_generate_mesh(obj_info, indices):
-            return True
-        return False
-
-    def _should_generate_mesh(self, info):
-        return bool(self.data())
-        # if not self.data():
-        #     return False
-
-        # if self._should_generate_mesh__check_neighbor(info, 0, 1.0, [6,7,4,5]): # +x
-        #     return True
-        # elif self._should_generate_mesh__check_neighbor(info, 0, -1.0, [2,3,0,1]): # -x
-        #     return True
-        # elif self._should_generate_mesh__check_neighbor(info, 1, 1.0, [2,3,6,7]): # +y
-        #     return True
-        # elif self._should_generate_mesh__check_neighbor(info, 1, -1.0, [0,1,4,5]): # -y
-        #     return True
-        # elif self._should_generate_mesh__check_neighbor(info, 2, 1.0, [2,6,0,4]): # +z
-        #     return True
-        # elif self._should_generate_mesh__check_neighbor(info, 2, -1.0, [3,7,1,5]): # -z
-        #     return True
-        # return False
-
     def _generate_mesh(self, info):
         top_node = info['parents'][0]
         # stime = time.time()
-        should_generate_mesh = self._should_generate_mesh(info)
-        # top_node._mesh_times['should_generate_mesh'] += time.time() - stime
+        block = self._get_block(info)
+        # top_node._mesh_times['should_generate_mesh: get_block'] += time.time() - stime
+        should_generate_mesh = block.should_generate_mesh()
         if not should_generate_mesh:
             return
 
@@ -452,7 +407,10 @@ class World(octree.Octree, WorldOctreeInterior):
         # self._mesh_times['get_child_info: misc'] = 0.0
         # self._mesh_times['get_child_info: get offset'] = 0.0
         # self._mesh_times['get_child_info: add offset'] = 0.0
-        # self._mesh_times['should_generate_mesh'] = 0.0
+        # self._mesh_times['should_generate_mesh: get_block'] = 0.0
+        # self._mesh_times['should_generate_mesh: bbox'] = 0.0
+        # self._mesh_times['should_generate_mesh: get_neighbors'] = 0.0
+        # self._mesh_times['should_generate_mesh: neighbor_check'] = 0.0
         # self._mesh_times['gathering_info'] = 0.0
         # self._mesh_times['generating_verts'] = 0.0
         # self._mesh_times['generating_indices'] = 0.0

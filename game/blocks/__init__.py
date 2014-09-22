@@ -1,3 +1,4 @@
+import time
 from collections import OrderedDict
 from ... import core
 
@@ -15,28 +16,17 @@ class AbstractBlock(object):
     _ID_TO_STATE = {}
     def __init__(self, game, octree_item, octree_item_info):
         super(AbstractBlock, self).__setattr__('_attributes', self.attributes())
-        state = self._ID_TO_STATE[octree_item.data()]
-        for name, value in state.iteritems():
-            setattr(self, name, value)
+        self.__dict__.update(self._ID_TO_STATE[octree_item.data()])
         self._game = game
         self._origin = octree_item_info['origin'].copy()
         self._size = octree_item_info['size']
+        self._world = octree_item_info['parents'][0]
 
     def __setattr__(self, name, value):
         if name in self._attributes:
             if value not in self._attributes[name]:
                 raise ValueError('%s is not a valid value for "%s".  Valid values are: %s' % (value, name, values))
         super(AbstractBlock, self).__setattr__(name, value)
-
-    # @classmethod
-    # def from_state(cls, state):
-    #     state_id = None
-    #     for id, id_state in cls._ID_TO_STATE.iteritems():
-    #         if id_state == state:
-    #             state_id = id
-    #     if state_id is None:
-    #         raise ValueError('The specified state does not exist: %s' % state)
-    #     return cls(state_id)
 
     @classmethod
     def _register_state(cls, id, state, items):
@@ -61,13 +51,18 @@ class AbstractBlock(object):
     @classmethod
     def attributes(cls):
         return OrderedDict()
-        # result = {}
-        # result['test'] = range(10)
-        # return result
 
     @classmethod
     def is_solid(cls):
         return True
+
+    def __eq__(self, other):
+        if type(self) != type(other):
+            return False
+        return self._origin == other._origin
+
+    def __ne__(self, other):
+        return not (self == other)
 
     def origin(self):
         return self._origin.copy()
@@ -77,6 +72,9 @@ class AbstractBlock(object):
 
     def size(self):
         return self._size
+
+    def world(self):
+        return self._world
 
     def bbox(self):
         half_size = self.size() * 0.5
@@ -171,10 +169,42 @@ class AbstractBlock(object):
                 component_index = i
         return t, component_index
 
+    def should_neighbor_generate_mesh(self, neighbor):
+        return False
+
+    def should_generate_mesh(self):
+        return True
+        # stime = time.time()
+        # bbox = self.bbox()
+        # self.world()._mesh_times['should_generate_mesh: bbox'] += time.time() - stime
+        # stime = time.time()
+        # blocks = set()
+        # blocks.update(self.world().get_blocks(
+        #         bbox, exclude_types=[], inclusive=[0]))
+        # blocks.update(self.world().get_blocks(
+        #         bbox, exclude_types=[], inclusive=[1]))
+        # blocks.update(self.world().get_blocks(
+        #         bbox, exclude_types=[], inclusive=[2]))
+        # self.world()._mesh_times['should_generate_mesh: get_neighbors'] += time.time() - stime
+        # stime = time.time()
+        # for block in blocks:
+        #     if block == self:
+        #         continue
+        #     if block.should_neighbor_generate_mesh(self):
+        #         return True
+        # self.world()._mesh_times['should_generate_mesh: neighbor_check'] += time.time() - stime
+        # return False
+
 class Air(AbstractBlock):
     @classmethod
     def is_solid(cls):
         return False
+
+    def should_generate_mesh(self):
+        return False
+
+    def should_neighbor_generate_mesh(self, neighbor):
+        return True
 
 class Rock(AbstractBlock):
     TopConnected    = int('000001', 2)
@@ -185,6 +215,6 @@ class Rock(AbstractBlock):
     BackConnected   = int('100000', 2)
     @classmethod
     def attributes(cls):
-        result = OrderedDict()
+        result = super(Rock, cls).attributes()
         result['connected'] = reversed(range(int('111111', 2)))
         return result
