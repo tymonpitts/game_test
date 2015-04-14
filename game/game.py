@@ -135,7 +135,7 @@ class Game(object):
                 GL.glUniformMatrix4fv(shader.uniforms['worldToCameraMatrix'], 1, GL.GL_FALSE, i_cam_mat.tolist())
 
         with self.shaders['skin'] as shader:
-            light_dir = core.Vector([0.1, 1.0, 0.5])
+            light_dir = core.Vector(0.1, 1.0, 0.5)
             light_dir.normalize()
             light_dir *= i_cam_mat
             GL.glUniform4fv(shader.uniforms['dirToLight'], 1, light_dir.tolist())

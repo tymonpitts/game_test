@@ -83,7 +83,7 @@ class Player(core.AbstractCamera):
                 h_velocity_length = max_walking_speed
                 h_velocity.normalize()
                 h_velocity *= h_velocity_length
-                velocity = Vector([h_velocity[0], velocity[1], h_velocity[2]])
+                velocity = Vector(h_velocity[0], velocity[1], h_velocity[2])
 
         # if we have velocity, perform collision detection 
         # and adjust the velocity vector accordingly

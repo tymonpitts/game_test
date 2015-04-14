@@ -12,7 +12,7 @@ from . import Vector, Point, Matrix
 #============================================================================#
 #=================================================================== CLASS ==#
 class AbstractCamera(object):
-    def __init__(self, game, position=[0,0,0]):
+    def __init__(self, game, position=None):
         self._game = game
         self._fovy = 45.0
         self._near = 0.01
@@ -20,7 +20,8 @@ class AbstractCamera(object):
 
         self._roty = 0.0
         self._rotx = 0.0
-        self._pos = Point(position)
+        position = position or [0.0, 0.0, 0.0]
+        self._pos = Point.cast(position)
         self.matrix = Matrix()
 
         self.projection_matrix = Matrix()

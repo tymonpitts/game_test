@@ -34,7 +34,8 @@ class BoundingBox(object):
         return self.get_dimension(2)
 
     def center(self):
-        return Point([(self._min[i]+self._max[i]) / 2.0 for i in xrange(3)])
+        data = [(self._min[i]+self._max[i]) / 2.0 for i in xrange(3)]
+        return Point(*data)
 
     def copy(self):
         bbox = BoundingBox()
@@ -46,15 +47,20 @@ class BoundingBox(object):
         return self._min is not None
 
     def expand(self, point):
-        point = Point(point)
+        point = Point.cast(point)
         if self._min is None:
-            self._min = point
+            self._min = point.copy()
             self._max = point.copy()
             return
 
         for i in xrange(3):
             self._min[i] = min(self._min[i], point[i])
             self._max[i] = max(self._max[i], point[i])
+
+    def uniform_expand(self, value):
+        for i in xrange(3):
+            self._min[i] -= value
+            self._max[i] += value
 
     def bbox_expand(self, other):
         if self._min is None:

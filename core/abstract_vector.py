@@ -10,24 +10,20 @@ import numpy
 #============================================================================#
 #=================================================================== CLASS ==#
 class AbstractVector(object):
-    def __init__(self, other=None):
-        if isinstance(other, numpy.matrix):
-            self._data = other
+    def __init__(self, x=0.0, y=0.0, z=0.0):
+        self._data = [float(x), float(y), float(z)]
+
+    @classmethod
+    def cast(cls, other):
+        if isinstance(other, cls):
+            return other
+        elif hasattr(other, '__iter__'):
+            return cls(*other[:3])
         else:
-            default_values = self._default_values()
-            if other is None:
-                other = default_values
-
-            self._data = numpy.matrix([default_values], dtype=float)
-            length = min(4,len(other))
-            for i in xrange(length):
-                self[i] = other[i]
-
-    def _default_values(self):
-        return [0,0,0,0]
+            return cls(other)
 
     def copy(self):
-        return type(self)(self._data.copy())
+        return type(self)(*self._data)
 
     @property
     def x(self):
@@ -55,78 +51,81 @@ class AbstractVector(object):
 
     @property
     def w(self):
-        return self[3]
-
-    @w.setter
-    def w(self, value):
-        self[3] = value
-
-    def round(self, decimals=6):
-        numpy.round(self._data, decimals, self._data)
-
-    def tolist(self):
-        return self._data.tolist()[0]
+        return 0.0
 
     def __str__(self):
-        return str(self.tolist())
+        return str(self._data)
 
     def __getitem__(self, index):
-        return self._data.item(0, index)
+        return self._data[index]
 
     def __setitem__(self, index, value):
-        self._data.itemset(0, index, value)
+        self._data[index] = float(value)
 
     def __neg__(self):
         return (self * -1.0)
 
     def __add__(self, other):
-        data = numpy.add(self._data, other._data)
-        data.itemset(0, 3, self.w)
-        return type(self)(data)
+        result = self.copy()
+        result += other
+        return result
 
     def __iadd__(self, other):
-        w = self.w
-        self._data = numpy.add(self._data, other._data)
-        self.w = w
+        for i in xrange(len(self)):
+            self._data[i] += other[i]
         return self
 
     def __sub__(self, other):
-        data = numpy.subtract(self._data, other._data)
-        data.itemset(0, 3, self.w)
-        return type(self)(data)
+        result = self.copy()
+        result -= other
+        return result
 
     def __isub__(self, other):
-        w = self.w
-        self._data = numpy.subtract(self._data, other._data)
-        self.w = w
+        for i in xrange(len(self)):
+            self._data[i] -= other[i]
         return self
 
+    def _as_numpy_matrix(self):
+        return numpy.matrix([[self.x, self.y, self.z, self.w]], dtype=float)
+
     def __mul__(self, other):
-        result = type(self)(self._data.copy())
+        result = self.copy()
         result *= other
         return result
 
     def __imul__(self, other):
-        if hasattr(other, '_data'):
-            self._data *= other._data
+        from . import Matrix
+        if isinstance(other, Matrix):
+            n_mat = self._as_numpy_matrix()
+            n_mat = numpy.dot(n_mat, other._data)
+            self._data = [n_mat.item(0, i) for i in xrange(3)]
+        elif hasattr(other, '__iter__'):
+            for i in xrange(3):
+                self._data[i] *= other[i]
         else:
-            self._data *= other
+            for i in xrange(3):
+                self._data[i] *= other
         return self
 
     def __div__(self, other):
-        result = type(self)(self._data.copy())
+        result = self.copy()
         result /= other
         return result
 
     def __idiv__(self, other):
-        if hasattr(other, '_data'):
-            self._data /= other._data
+        from . import Matrix
+        if isinstance(other, Matrix):
+            raise TypeError('unsupported operand type(s) for /: \'%s\' and \'%s\'' % (type(self), type(other)))
+        elif hasattr(other, '__iter__'):
+            for i in xrange(3):
+                self._data[i] /= other[i]
         else:
-            self._data /= other
+            for i in xrange(3):
+                self._data[i] /= other
         return self
 
     def __len__(self):
-        return 4
+        return 3
 
     def __iter__(self):
         for item in self._data:
@@ -143,4 +142,8 @@ class AbstractVector(object):
 
     def __ne__(self, other):
         return (not self.__eq__(other))
+
+    def round(self, decimals=6):
+        for i in xrange(len(self)):
+            self._data = round(self._data[i], decimals)
 

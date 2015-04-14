@@ -153,10 +153,8 @@ class Matrix(object):
         self._data = mat._data
 
     def scale(self, scaleVec):
-        from . import Vector
-        if isinstance(scaleVec, float):
+        if not hasattr(scaleVec, '__iter__'):
             scaleVec = [scaleVec] * 3
-        scaleVec = Vector(scaleVec)
         mat = Matrix()
         for index in xrange(3):
             mat[index, index] = scaleVec[index]
@@ -165,8 +163,8 @@ class Matrix(object):
         self._data = mat._data
 
     def translate(self, offsetVec):
-        from . import Vector
-        offsetVec = Vector(offsetVec)
+        if not hasattr(offsetVec, '__iter__'):
+            offsetVec = [offsetVec] * 3
         mat = Matrix()
         for index in xrange(3):
             mat[3, index] = offsetVec[index]

@@ -78,7 +78,7 @@ class AbstractBlock(object):
 
     def bbox(self):
         half_size = self.size() * 0.5
-        offset = core.Vector([half_size]*3)
+        offset = core.Vector(half_size, half_size, half_size)
         min_ = self._origin - offset
         max_ = self._origin + offset
         return core.BoundingBox(min_, max_)
@@ -111,7 +111,7 @@ class AbstractBlock(object):
         # this is so that we can find the proper solution.
         #
         expanded_collision_bbox = collision_box.copy()
-        dimensions = core.Vector([start_bbox.get_dimension(i) / 2.0 for i in xrange(3)])
+        dimensions = [start_bbox.get_dimension(i) / 2.0 for i in xrange(3)]
         expanded_collision_bbox._min -= dimensions
         expanded_collision_bbox._max += dimensions
 

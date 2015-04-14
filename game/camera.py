@@ -19,7 +19,7 @@ class Camera(object):
 
         self._roty = 0.0
         self._rotx = 0.0
-        self._trans = core.Point(position)
+        self._trans = core.Point.cast(position)
         self.matrix = core.Matrix()
         self.projection_matrix = core.Matrix()
 

@@ -80,7 +80,7 @@ class AbstractWorldOctreeBase(octree.AbstractOctreeBase):
 
     def _get_bbox(self, info):
         half_size = info['size'] * 0.5
-        offset = core.Vector([half_size]*3)
+        offset = core.Vector(half_size, half_size, half_size)
         min_ = info['origin'] - offset
         max_ = info['origin'] + offset
         return core.BoundingBox(min_, max_)
