@@ -1,16 +1,9 @@
 #============================================================================#
 #================================================================= IMPORTS ==#
-import os
-import sys
-import math
 import random
 import time
-from collections import OrderedDict
 
 import numpy
-import glfw
-import noise
-
 from OpenGL import GL
 
 from ..data import cube
@@ -18,7 +11,6 @@ from .. import core
 from ..core import octree
 from . import blocks
 
-from ..core.logger import *
 
 
 #============================================================================#

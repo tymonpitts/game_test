@@ -2,10 +2,10 @@ __all__ = ['Quaternion']
 
 #============================================================================#
 #================================================================= IMPORTS ==#
-import os
-import sys
 import math
+
 import numpy
+
 
 
 #============================================================================#
@@ -114,7 +114,6 @@ class Quaternion(object):
         return q
 
     def vector_mult(self, v):
-        from . import Vector
         v = v.normal()
         v = Quaternion(v.x, v.y, v.z)
         result = self * v * self.conjugate()

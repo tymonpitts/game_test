@@ -1,14 +1,9 @@
 import os
-import sys
 import time
-import numpy
-import math
 import random
 
 import glfw
-import OpenGL
 from OpenGL import GL
-from OpenGL import GLE
 from OpenGL.GL.ARB import depth_clamp
 
 from .. import data

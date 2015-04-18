@@ -1,6 +1,7 @@
-import time
 from collections import OrderedDict
+
 from ... import core
+
 
 _BLOCKS = []
 

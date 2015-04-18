@@ -1,5 +1,7 @@
 from OpenGL import GL
-from . import SHORT_SIZE, FLOAT_SIZE
+
+from . import FLOAT_SIZE
+
 
 class Mesh(object):
     def __init__(self, vertices, normals, indices, draw_method):

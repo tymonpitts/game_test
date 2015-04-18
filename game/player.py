@@ -1,11 +1,6 @@
 #============================================================================#
 #================================================================= IMPORTS ==#
-import os
-import sys
-import math
 
-import numpy
-import glfw
 from OpenGL import GL
 
 from .. import core

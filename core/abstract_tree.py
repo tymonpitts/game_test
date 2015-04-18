@@ -2,20 +2,8 @@ __all__ = ['AbstractTree']
 
 #============================================================================#
 #================================================================= IMPORTS ==#
-import os
-import sys
-import math
-import numpy
-import random
-
-from OpenGL import GL
 
 from . import Point
-from . import Vector
-from . import Matrix
-from . import BoundingBox
-
-from .logger import log, increase_tab, decrease_tab, Logger
 
 
 #============================================================================#
