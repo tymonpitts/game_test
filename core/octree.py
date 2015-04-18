@@ -8,11 +8,11 @@ from . import abstract_tree
 
 #============================================================================#
 #=================================================================== CLASS ==#
-class OctreeInterior(abstract_tree.AbstractTreeInterior):
+class _OctreeBranch(abstract_tree.AbstractTreeBranch):
     pass
 
 
-class OctreeLeaf(abstract_tree.AbstractTreeLeaf):
+class _OctreeLeaf(abstract_tree.AbstractTreeLeaf):
     pass
 
 
@@ -20,9 +20,9 @@ class Octree(abstract_tree.AbstractTree):
     _DIMENSIONS = 3
 
 
-OctreeInterior._TREE_CLS = Octree
-OctreeLeaf._TREE_CLS = Octree
+_OctreeBranch._TREE_CLS = Octree
+_OctreeLeaf._TREE_CLS = Octree
 
-Octree._LEAF_CLS = OctreeLeaf
-Octree._INTERIOR_CLS = OctreeInterior
+Octree._LEAF_CLS = _OctreeLeaf
+Octree._BRANCH_CLS = _OctreeBranch
 

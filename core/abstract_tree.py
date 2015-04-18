@@ -8,7 +8,7 @@ from . import Point
 
 #============================================================================#
 #=================================================================== CLASS ==#
-class AbstractTreeInterior(object):
+class AbstractTreeBranch(object):
     _TREE_CLS = None
 
     def __init__(self):
@@ -83,12 +83,12 @@ class AbstractTree(object):
             1 5
     """
     _LEAF_CLS = None
-    _INTERIOR_CLS = None
+    _BRANCH_CLS = None
     _DIMENSIONS = None
 
     def __init__(self, size):
         super(AbstractTree, self).__init__()
-        self._root = self._INTERIOR_CLS()
+        self._root = self._BRANCH_CLS()
         self._size = size
 
     def _get_info(self):
@@ -113,9 +113,9 @@ class AbstractTree(object):
         return self._root._get_point(self._get_info(), point)
 
 
-AbstractTreeInterior._TREE_CLS = AbstractTree
+AbstractTreeBranch._TREE_CLS = AbstractTree
 AbstractTreeLeaf._TREE_CLS = AbstractTree
 
 AbstractTree._LEAF_CLS = AbstractTreeLeaf
-AbstractTree._INTERIOR_CLS = AbstractTreeInterior
+AbstractTree._BRANCH_CLS = AbstractTreeBranch
 

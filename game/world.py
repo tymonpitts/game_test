@@ -95,7 +95,7 @@ class AbstractWorldOctreeBase(object):
         raise NotImplementedError
 
 
-class WorldOctreeInterior(AbstractWorldOctreeBase, octree.OctreeInterior):
+class _WorldOctreeBranch(AbstractWorldOctreeBase, octree._OctreeBranch):
     # def _render(self, info, shader):
     #     for child, child_info in self.iter_children_info(info):
     #         if info['size'] > 4:
@@ -288,7 +288,7 @@ class WorldOctreeInterior(AbstractWorldOctreeBase, octree.OctreeInterior):
         return False
 
 
-class WorldOctreeLeaf(AbstractWorldOctreeBase, octree.OctreeLeaf):
+class _WorldOctreeLeaf(AbstractWorldOctreeBase, octree._OctreeLeaf):
     # def _render(self, info, shader):
     #     if not self._data:
     #         return
@@ -605,9 +605,9 @@ class World(octree.Octree):
         return self._root._is_grounded(self._get_info(), bbox)
 
 
-WorldOctreeInterior._TREE_CLS = World
-WorldOctreeLeaf._TREE_CLS = World
+_WorldOctreeBranch._TREE_CLS = World
+_WorldOctreeLeaf._TREE_CLS = World
 
-World._LEAF_CLS = WorldOctreeLeaf
-World._INTERIOR_CLS = WorldOctreeInterior
+World._LEAF_CLS = _WorldOctreeLeaf
+World._BRANCH_CLS = _WorldOctreeBranch
 
