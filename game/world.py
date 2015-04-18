@@ -20,13 +20,16 @@ from . import blocks
 
 from ..core.logger import *
 
+
 #============================================================================#
 #=============================================================== FUNCTIONS ==#
 def clamp(v, min_, max_):
     return max(min(v, max_), min_)
 
+
 def fractal_rand():
     return (random.random() * 2.0) - 1.0
+
 
 def avg_vals(i, j, values):
     return (values[i-1][j-1] + 
@@ -34,11 +37,13 @@ def avg_vals(i, j, values):
             values[i][j-1] +
             values[i][j]) * 0.25
 
+
 def avg_square_vals(i, j, stride, values):
     return (values[i-stride][j-stride] + 
             values[i-stride][j+stride] +
             values[i+stride][j-stride] +
             values[i+stride][j+stride]) * 0.25
+
 
 def avg_diamond_vals(i, j, stride, size, values):
     if i == 0:
@@ -67,25 +72,38 @@ def avg_diamond_vals(i, j, stride, size, values):
                 values[i][j-stride] +
                 values[i][j+stride]) * 0.25
 
+
 #============================================================================#
 #=================================================================== CLASS ==#
-class AbstractWorldOctreeBase(octree.AbstractOctreeBase):
-    @property
-    def _leaf_cls(self):
-        return WorldOctreeLeaf
-
-    @property
-    def _interior_cls(self):
-        return WorldOctreeInterior
-
-    def _get_bbox(self, info):
+class AbstractWorldOctreeBase(object):
+    @staticmethod
+    def _get_bbox(info):
         half_size = info['size'] * 0.5
         offset = core.Vector(half_size, half_size, half_size)
         min_ = info['origin'] - offset
         max_ = info['origin'] + offset
         return core.BoundingBox(min_, max_)
 
-class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
+    def _get_height(self, info, x, z):
+        raise NotImplementedError
+
+    def _generate_mesh(self, info):
+        raise NotImplementedError
+
+    def _get_collisions(self, info, bbox):
+        raise NotImplementedError
+
+    def _get_blocks(self, info, bbox, exclude_types, inclusive):
+        raise NotImplementedError
+    
+    def _get_block(self, info, point):
+        raise NotImplementedError
+
+    def _is_grounded(self, info, bbox):
+        raise NotImplementedError
+
+
+class WorldOctreeInterior(AbstractWorldOctreeBase, octree.OctreeInterior):
     # def _render(self, info, shader):
     #     for child, child_info in self.iter_children_info(info):
     #         if info['size'] > 4:
@@ -105,12 +123,12 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
         index2 = index1
         index1 |= 2
 
-        child1 = self.child(index1)
+        child1 = self._children[index1]
         height = child1._get_height(self._get_child_info(info, index1), x, z)
         if height is not None:
             return height
 
-        child2 = self.child(index2)
+        child2 = self._children[index2]
         return child2._get_height(self._get_child_info(info, index2), x, z)
 
     def _get_child_info__debug(self, info, index, copy=True):
@@ -153,9 +171,9 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
         verts = []
         normals = []
         indices = []
-        for child, child_info in self.iter_children_info(info):
         # for index, child in enumerate(self._children):
         #     child_info = self._get_child_info__debug(info, index)
+        for child, child_info in self.iter_children_info(info):
             result = child._generate_mesh(child_info)
             if result is None:
                 continue
@@ -176,30 +194,30 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
         # handle cases where both children are either solid or empty
         #
         if min_ > max_height:
-            self._children[indices[0]] = self._leaf_cls(1)
-            self._children[indices[1]] = self._leaf_cls(1)
+            self._children[indices[0]] = self._TREE_CLS._LEAF_CLS(1)
+            self._children[indices[1]] = self._TREE_CLS._LEAF_CLS(1)
             return
         elif max_ <= min_height:
-            self._children[indices[0]] = self._leaf_cls(0)
-            self._children[indices[1]] = self._leaf_cls(0)
+            self._children[indices[0]] = self._TREE_CLS._LEAF_CLS(0)
+            self._children[indices[1]] = self._TREE_CLS._LEAF_CLS(0)
             return
 
         # handle top
         #
         if max_ <= origin:
-            self._children[indices[0]] = self._leaf_cls(0)
+            self._children[indices[0]] = self._TREE_CLS._LEAF_CLS(0)
         elif all_leaf:
-            self._children[indices[0]] = self._leaf_cls(1)
+            self._children[indices[0]] = self._TREE_CLS._LEAF_CLS(1)
         else:
-            self._children[indices[0]] = self._interior_cls()
+            self._children[indices[0]] = self._TREE_CLS._INTERIOR_CLS()
             self._children[indices[0]]._init_from_height_map(self._get_child_info(info, indices[0]), values)
 
         # handle bottom
         #
         if min_ > origin or all_leaf:
-            self._children[indices[1]] = self._leaf_cls(1)
+            self._children[indices[1]] = self._TREE_CLS._LEAF_CLS(1)
         else:
-            self._children[indices[1]] = self._interior_cls()
+            self._children[indices[1]] = self._TREE_CLS._INTERIOR_CLS()
             self._children[indices[1]]._init_from_height_map(self._get_child_info(info, indices[1]), values)
 
     def _init_from_height_map(self, info, values):
@@ -257,15 +275,15 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
     def _get_blocks(self, info, bbox, exclude_types, inclusive):
         this_bbox = self._get_bbox(info)
         collision = this_bbox.intersection(bbox, inclusive)
-        blocks = []
+        results = []
         if collision:
             for child, child_info in self.iter_children_info(info):
-                blocks.extend(child._get_blocks(child_info, bbox, exclude_types, inclusive))
-        return blocks
+                results.extend(child._get_blocks(child_info, bbox, exclude_types, inclusive))
+        return results
 
     def _get_block(self, info, point):
         index = self._child_index_closest_to_point(info, point)
-        child = self.child(index)
+        child = self._children[index]
         child_info = self._get_child_info(info, index)
         return child._get_block(child_info, point)
 
@@ -277,9 +295,10 @@ class WorldOctreeInterior(octree.OctreeInterior, AbstractWorldOctreeBase):
                     return True
         return False
 
-class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
+
+class WorldOctreeLeaf(AbstractWorldOctreeBase, octree.OctreeLeaf):
     # def _render(self, info, shader):
-    #     if not self.data():
+    #     if not self._data:
     #         return
 
     #     # if abs(info['origin'][0]) > 5:
@@ -305,14 +324,14 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
     #     info['game'].cube.render()
 
     def _get_height(self, info, x, z):
-        if not self.data():
+        if not self._data:
             return None
         return info['origin'].y+(info['size'] / 2.0)
 
     def _generate_mesh(self, info):
         top_node = info['parents'][0]
         # stime = time.time()
-        block = self._get_block(info)
+        block = self._get_block(info, None)
         # top_node._mesh_times['should_generate_mesh: get_block'] += time.time() - stime
         should_generate_mesh = block.should_generate_mesh()
         if not should_generate_mesh:
@@ -326,18 +345,18 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
         origin_z = info['origin'].z
         size = info['size']
         normals = info['cube'].NORMALS
-        VERTS = info['cube'].VERTICES
+        cube_verts = info['cube'].VERTICES
         # top_node._mesh_times['gathering_info'] += time.time() - stime
         # stime = time.time()
         verts = []
-        for i in xrange(0, len(VERTS), 3):
-            # vert = origin + core.Vector([VERTS[i], VERTS[i+1], VERTS[i+2]]) * size
+        for i in xrange(0, len(cube_verts), 3):
+            # vert = origin + core.Vector([cube_verts[i], cube_verts[i+1], cube_verts[i+2]]) * size
             # verts.append(vert.x)
             # verts.append(vert.y)
             # verts.append(vert.z)
-            verts.append(origin_x + VERTS[i] * size)
-            verts.append(origin_y + VERTS[i+1] * size)
-            verts.append(origin_z + VERTS[i+2] * size)
+            verts.append(origin_x + cube_verts[i] * size)
+            verts.append(origin_y + cube_verts[i+1] * size)
+            verts.append(origin_z + cube_verts[i+2] * size)
         # top_node._mesh_times['generating_verts'] += time.time() - stime
 
         # stime = time.time()
@@ -346,17 +365,17 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
         return verts, normals, indices
 
     def _get_collisions(self, info, bbox):
-        if not bool(self.data()):
+        if not bool(self._data):
             return []
         this_bbox = self._get_bbox(info)
         collision = this_bbox.intersection(bbox)
         if collision:
-            return [(collision, self._get_block(info))]
+            return [(collision, self._get_block(info, None))]
         else:
             return []
 
     def _get_blocks(self, info, bbox, exclude_types, inclusive):
-        block_cls = info['game'].get_block_cls(self.data())
+        block_cls = info['game'].get_block_cls(self._data)
         if block_cls in exclude_types:
             return []
 
@@ -367,12 +386,12 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
         else:
             return []
 
-    def _get_block(self, info, *args, **kwargs):
-        block_cls = info['game'].get_block_cls(self.data())
+    def _get_block(self, info, point):
+        block_cls = info['game'].get_block_cls(self._data)
         return block_cls(info['game'], self, info)
 
     def _is_grounded(self, info, bbox):
-        block_cls = info['game'].get_block_cls(self.data())
+        block_cls = info['game'].get_block_cls(self._data)
         if not block_cls.is_solid():
             return False
 
@@ -380,18 +399,18 @@ class WorldOctreeLeaf(octree.OctreeLeaf, AbstractWorldOctreeBase):
         return this_bbox.collides(bbox, inclusive=[1])
 
 
-class World(octree.Octree, WorldOctreeInterior):
+class World(octree.Octree):
     def __init__(self, game, size):
-        self._game = game
+        self.game = game
         super(World, self).__init__(size)
         self.mesh = None
 
         stime = time.time()
-        height_map = self._generate_height_map()
+        self._generation_height_map = self._generate_height_map()
         print 'height map generation time:', (time.time() - stime)
 
         stime = time.time()
-        self._init_from_height_map(height_map)
+        self._init_from_height_map(self._generation_height_map)
         print 'octree initialization time:', (time.time() - stime)
 
         # stime = time.time()
@@ -428,16 +447,13 @@ class World(octree.Octree, WorldOctreeInterior):
         # print '  TOTAL:', total_time
         print 'mesh generation time:', total_time
 
-    def game(self):
-        return self._game
-
     def _get_info(self):
         info = super(World, self)._get_info()
-        info['game'] = self.game()
+        info['game'] = self.game
         return info
 
     def _generate_height_map(self):
-        """generates a height map using the diamond-square algorithm
+        """generates a height map using a modified diamond-square algorithm
         """
 
         size = int(self.size())
@@ -457,11 +473,11 @@ class World(octree.Octree, WorldOctreeInterior):
 
             # perform 'diamond' step
             #
-            oddline = False
+            odd_line = False
             for i in xrange(0, size, stride):
-                oddline = (oddline is False)
+                odd_line = (odd_line is False)
                 start = 0
-                if oddline:
+                if odd_line:
                     start = stride
                 for j in xrange(start, size, stride*2):
                     values[i][j] = scale * fractal_rand() + avg_diamond_vals(i, j, stride, size, values)
@@ -491,7 +507,7 @@ class World(octree.Octree, WorldOctreeInterior):
         #         if y > top or y <= bottom:
         #             print '(%s, %s): y=%f, top=%s, bottom=%s' % (x,z,y,top,bottom)
 
-        # create a debug mesh that represents the heightmap
+        # create a debug mesh that represents the height map
         #
         index_offset = 0
         verts = []
@@ -499,6 +515,7 @@ class World(octree.Octree, WorldOctreeInterior):
         indices = []
         start_x = -(self.size() / 2)
         start_z = -(self.size() / 2)
+        cube_verts = cube.VERTICES
         for x, row in enumerate(values):
             x = start_x + float(x) + 0.5
             # if abs(x) > 8:
@@ -508,24 +525,22 @@ class World(octree.Octree, WorldOctreeInterior):
                 # if abs(z) > 8:
                 #     continue
 
-                # VERTS = cube.VERTICES
                 # for i in xrange(12, 24, 3):
-                #     verts.append(x+VERTS[i])
-                #     verts.append(y+VERTS[i+1])
-                #     verts.append(z+VERTS[i+2])
+                #     verts.append(x+cube_verts[i])
+                #     verts.append(y+cube_verts[i+1])
+                #     verts.append(z+cube_verts[i+2])
                 # normals += cube.NORMALS[12:24]
                 # faces = [0,1,3,2,3,1]
                 # indices += [i + index_offset for i in faces]
                 # index_offset += 4
 
-                VERTS = cube.VERTICES
-                for i in xrange(0, len(VERTS), 3):
-                    verts.append(x+VERTS[i])
-                    verts.append(y+VERTS[i+1])
-                    verts.append(z+VERTS[i+2])
+                for i in xrange(0, len(cube_verts), 3):
+                    verts.append(x+cube_verts[i])
+                    verts.append(y+cube_verts[i+1])
+                    verts.append(z+cube_verts[i+2])
                 normals += cube.NORMALS
                 indices += [i + index_offset for i in cube.INDICES]
-                index_offset += len(VERTS)/3
+                index_offset += len(cube_verts)/3
 
         self._debug_mesh = core.Mesh(verts, normals, indices, GL.GL_TRIANGLES)
 
@@ -533,16 +548,16 @@ class World(octree.Octree, WorldOctreeInterior):
         info = self._get_info()
         info['cube'] = cube
         info['index_offset'] = 0
-        verts, normals, indices = super(World, self)._generate_mesh(info)
+        verts, normals, indices = self._root._generate_mesh(info)
         # stime = time.time()
         self.mesh = core.Mesh(verts, normals, indices, GL.GL_TRIANGLES)
         # self._mesh_times['creating_mesh'] = time.time() - stime
 
     def _init_from_height_map(self, values):
-        super(World, self)._init_from_height_map(self._get_info(), values)
+        self._root._init_from_height_map(self._get_info(), values)
 
     def render(self):
-        with self.game().shaders['skin'] as shader:
+        with self.game.shaders['skin'] as shader:
             GL.glUniformMatrix4fv(
                     shader.uniforms['modelToWorldMatrix'], 
                     1, 
@@ -564,32 +579,43 @@ class World(octree.Octree, WorldOctreeInterior):
             #     child._render(child_info, shader)
 
     def get_height(self, x, z):
-        return self._get_height(self._get_info(), x, z)
+        return self._root._get_height(self._get_info(), x, z)
 
     def get_collisions(self, bbox):
-        return self._get_collisions(self._get_info(), bbox)
+        return self._root._get_collisions(self._get_info(), bbox)
 
-    def get_blocks(self, bbox, exclude_types=[blocks.Air], inclusive=[]):
+    def get_blocks(self, bbox, exclude_types=None, inclusive=None):
         """Retrieve a list of blocks contained within *bbox*
 
         :param bbox: The area to retrieve blocks from.
         :type bbox: :class:`.BoundingBox`
-        :param exclude_types: A list of block types to exclude from the returned value.
+        :param exclude_types: A list of block types to exclude from the returned value. [default: [blocks.Air]]
         :type exclude_types: list of :class:`.AbstractBlock` types
         :param inclusive: Whether or not to include blocks that touch the edges of *bbox*.
-            The elements in this list determine which components are inclusive
+            The elements in this list determine which components are inclusive.
         :type inclusive: list of int
 
         :rtype: list of :class:`.AbstractBlock` instances
         """
-        return self._get_blocks(self._get_info(), bbox, exclude_types, inclusive)
+        if exclude_types is None:
+            exclude_types = [blocks.Air]
+        if inclusive is None:
+            inclusive = []
+        return self._root._get_blocks(self._get_info(), bbox, exclude_types, inclusive)
 
     def get_block(self, point):
         bounds = self.size() / 2.0
         if point.x > bounds or point.z > bounds or point.y > bounds:
             return None
-        return self._get_block(self._get_info(), point)
+        return self._root._get_block(self._get_info(), point)
 
     def is_grounded(self, bbox):
-        return self._is_grounded(self._get_info(), bbox)
+        return self._root._is_grounded(self._get_info(), bbox)
+
+
+WorldOctreeInterior._TREE_CLS = World
+WorldOctreeLeaf._TREE_CLS = World
+
+World._LEAF_CLS = WorldOctreeLeaf
+World._INTERIOR_CLS = WorldOctreeInterior
 

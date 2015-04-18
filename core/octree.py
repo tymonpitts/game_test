@@ -19,23 +19,24 @@ from .logger import log, increase_tab, decrease_tab, Logger
 
 from . import abstract_tree
 
+
 #============================================================================#
 #=================================================================== CLASS ==#
-class AbstractOctreeBase(abstract_tree.AbstractTreeBase):
-    @property
-    def _leaf_cls(self):
-        return OctreeLeaf
-
-    @property
-    def _interior_cls(self):
-        return OctreeInterior
-
-class OctreeInterior(abstract_tree.AbstractTreeInterior, AbstractOctreeBase):
+class OctreeInterior(abstract_tree.AbstractTreeInterior):
     pass
 
-class OctreeLeaf(abstract_tree.AbstractTreeLeaf, AbstractOctreeBase):
+
+class OctreeLeaf(abstract_tree.AbstractTreeLeaf):
     pass
 
-class Octree(abstract_tree.AbstractTree, OctreeInterior):
-    pass
+
+class Octree(abstract_tree.AbstractTree):
+    _DIMENSIONS = 3
+
+
+OctreeInterior._TREE_CLS = Octree
+OctreeLeaf._TREE_CLS = Octree
+
+Octree._LEAF_CLS = OctreeLeaf
+Octree._INTERIOR_CLS = OctreeInterior
 

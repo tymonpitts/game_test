@@ -3,6 +3,8 @@ from collections import OrderedDict
 from ... import core
 
 _BLOCKS = []
+
+
 class BlockMeta(type):
     def __new__(meta, name, bases, dct):
         cls = super(BlockMeta, meta).__new__(meta, name, bases, dct)
@@ -10,6 +12,7 @@ class BlockMeta(type):
             global _BLOCKS
             _BLOCKS.append(cls)
         return cls
+
 
 class AbstractBlock(object):
     __metaclass__ = BlockMeta
@@ -195,6 +198,7 @@ class AbstractBlock(object):
         # self.world()._mesh_times['should_generate_mesh: neighbor_check'] += time.time() - stime
         # return False
 
+
 class Air(AbstractBlock):
     @classmethod
     def is_solid(cls):
@@ -205,6 +209,7 @@ class Air(AbstractBlock):
 
     def should_neighbor_generate_mesh(self, neighbor):
         return True
+
 
 class Rock(AbstractBlock):
     TopConnected    = int('000001', 2)
@@ -218,3 +223,4 @@ class Rock(AbstractBlock):
         result = super(Rock, cls).attributes()
         result['connected'] = reversed(range(int('111111', 2)))
         return result
+

@@ -145,5 +145,5 @@ class AbstractVector(object):
 
     def round(self, decimals=6):
         for i in xrange(len(self)):
-            self._data = round(self._data[i], decimals)
+            self._data[i] = round(self._data[i], decimals)
 

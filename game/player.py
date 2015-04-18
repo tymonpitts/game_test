@@ -13,8 +13,8 @@ from .. import core
 #============================================================================#
 #=================================================================== CLASS ==#
 class Player(core.AbstractCamera):
-    def __init__(self, *args, **kwargs):
-        super(Player, self).__init__(*args, **kwargs)
+    def __init__(self, position):
+        super(Player, self).__init__(position)
         self.mass = 65.0 # kilograms
 
         self.eye_level = 1.7
@@ -30,9 +30,13 @@ class Player(core.AbstractCamera):
         self.velocity = core.Vector()
         self._grounded = True
 
+    def game(self):
+        from .game import Game
+        return Game.INSTANCE
+
     def world(self):
-        from .. import GAME
-        return GAME.world
+        from .game import Game
+        return Game.INSTANCE.world
 
     def render(self):
         bbox = self._get_bbox_at_pos(self._pos)

@@ -9,6 +9,7 @@ import numpy
 
 from .abstract_vector import AbstractVector
 
+
 #============================================================================#
 #=================================================================== CLASS ==#
 class Vector(AbstractVector):

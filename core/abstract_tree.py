@@ -17,24 +17,16 @@ from . import BoundingBox
 
 from .logger import log, increase_tab, decrease_tab, Logger
 
+
 #============================================================================#
 #=================================================================== CLASS ==#
-class AbstractTreeBase(object):
-    @property
-    def _leaf_cls(self):
-        return AbstractTreeLeaf
+class AbstractTreeInterior(object):
+    _TREE_CLS = None
 
-    @property
-    def _interior_cls(self):
-        return AbstractTreeInterior
+    def __init__(self):
+        num_children = pow(2, self._TREE_CLS._DIMENSIONS)
+        self._children = tuple([self._TREE_CLS._LEAF_CLS() for i in xrange(num_children)])
 
-    def _is_leaf(self):
-        return False
-
-    def data(self):
-        return None
-
-class AbstractTreeInterior(AbstractTreeBase):
     def _get_child_info(self, info, index, copy=True):
         if copy:
             info = info.copy()
@@ -56,19 +48,13 @@ class AbstractTreeInterior(AbstractTreeBase):
 
         return info
 
-    def children(self):
-        return self._children
-
-    def child(self, index):
-        return self._children[index]
-
     def iter_children_info(self, info):
         for index, child in enumerate(self._children):
             yield (child, self._get_child_info(info, index))
 
     def _get_point(self, info, point):
         index = self._child_index_closest_to_point(info, point)
-        return self.child(index)._get_point(self._get_child_info(info, index), point)
+        return self._children[index]._get_point(self._get_child_info(info, index), point)
 
     def _child_index_closest_to_point(self, info, point):
         index = 0
@@ -79,7 +65,10 @@ class AbstractTreeInterior(AbstractTreeBase):
 
         return index
 
-class AbstractTreeLeaf(AbstractTreeBase):
+
+class AbstractTreeLeaf(object):
+    _TREE_CLS = None
+
     def __init__(self, data=None):
         self._data = data
 
@@ -93,10 +82,8 @@ class AbstractTreeLeaf(AbstractTreeBase):
     def _get_point(self, info, point):
         return self, info
 
-    def _is_leaf(self):
-        return True
 
-class AbstractTree(AbstractTreeInterior):
+class AbstractTree(object):
     """
 
     Child indices:
@@ -107,13 +94,17 @@ class AbstractTree(AbstractTreeInterior):
             0 4
             1 5
     """
+    _LEAF_CLS = None
+    _INTERIOR_CLS = None
+    _DIMENSIONS = None
+
     def __init__(self, size):
         super(AbstractTree, self).__init__()
+        self._root = self._INTERIOR_CLS()
         self._size = size
-        self._children = tuple([self._leaf_cls(self) for i in xrange(8)])
 
     def _get_info(self):
-        info = {}
+        info = dict()
         info['level'] = 1
         info['size'] = self.size()
         info['origin'] = self.origin()
@@ -131,5 +122,12 @@ class AbstractTree(AbstractTreeInterior):
         for i in xrange(3):
             if abs(point[i]) > half_size:
                 return (None, None)
-        return self._get_point(self._get_info(), point)
+        return self._root._get_point(self._get_info(), point)
+
+
+AbstractTreeInterior._TREE_CLS = AbstractTree
+AbstractTreeLeaf._TREE_CLS = AbstractTree
+
+AbstractTree._LEAF_CLS = AbstractTreeLeaf
+AbstractTree._INTERIOR_CLS = AbstractTreeInterior
 

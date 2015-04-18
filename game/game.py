@@ -13,11 +13,13 @@ from OpenGL.GL.ARB import depth_clamp
 
 from .. import data
 from .. import core
-from . import Camera
-from . import World
+
 
 class Game(object):
+    INSTANCE = None
+
     def __init__(self):
+        type(self).INSTANCE = self
         self.mouse_movement = (0.0,0.0)
 
         self.pressed_keys = set()
@@ -25,7 +27,6 @@ class Game(object):
         self.shaders = {}
         self.player = None
         self.world = None
-        # self.collider = None
 
         self.block_ids_to_cls = []
 
@@ -40,7 +41,23 @@ class Game(object):
     def init(self):
         self.cube = core.Mesh(data.cube.VERTICES, data.cube.NORMALS, data.cube.INDICES, data.cube.DRAW_METHOD)
 
-        self.shaders['skin'] = core.BaseShader(VERTEX_SHADER, FRAGMENT_SHADER)
+        shaders_dir = os.path.dirname(__file__)
+        shaders_dir = os.path.join(shaders_dir, '../shaders')
+        shaders_dir = os.path.abspath(shaders_dir)
+
+        frag_shader_path = os.path.join(shaders_dir, 'frag.frag.glsl')
+        with open(frag_shader_path, 'r') as handle:
+            frag_shader = handle.read()
+
+        skin_shader_path = os.path.join(shaders_dir, 'skin.vert.glsl')
+        with open(skin_shader_path, 'r') as handle:
+            skin_shader = handle.read()
+
+        constant_shader_path = os.path.join(shaders_dir, 'constant.vert.glsl')
+        with open(constant_shader_path, 'r') as handle:
+            constant_shader = handle.read()
+
+        self.shaders['skin'] = core.BaseShader(skin_shader, frag_shader)
         self.shaders['skin'].store_uniform_location('modelToWorldMatrix')
         self.shaders['skin'].store_uniform_location('worldToCameraMatrix')
         self.shaders['skin'].store_uniform_location('cameraToClipMatrix')
@@ -52,7 +69,7 @@ class Game(object):
             GL.glUniform4f(shader.uniforms['lightIntensity'], 0.8, 0.8, 0.8, 1.0)
             GL.glUniform4f(shader.uniforms['ambientIntensity'], 0.2, 0.2, 0.2, 1.0)
 
-        self.shaders['constant'] = core.BaseShader(CONSTANT_SHADER, FRAGMENT_SHADER)
+        self.shaders['constant'] = core.BaseShader(constant_shader, frag_shader)
         self.shaders['constant'].store_uniform_location('modelToWorldMatrix')
         self.shaders['constant'].store_uniform_location('worldToCameraMatrix')
         self.shaders['constant'].store_uniform_location('cameraToClipMatrix')
@@ -63,16 +80,17 @@ class Game(object):
         from .world import World
         self.world = World(self, 128)
 
-        from .player import Player
-        x=0.5
-        z=-3.5
-        y = self.world.get_height(x,z)
-        self.player = Player(self, [x, y, z])
+        # from .player import Player
+        # x=0.5
+        # z=-3.5
+        # y = self.world.get_height(x,z)
+        # self.player = Player(self, [x, y, z])
 
-        # from ..tests import collision
-        # self.player = collision.Camera()
-        # self.collider = collision.Collider()
-        # self.world = collision.World()
+        from .spectator import Spectator
+        x = 0.0
+        z = 0.0
+        y = 64.0
+        self.player = Spectator([x, y, z])
 
         GL.glEnable(GL.GL_CULL_FACE)
         GL.glCullFace(GL.GL_BACK)
@@ -137,14 +155,56 @@ class Game(object):
         with self.shaders['skin'] as shader:
             light_dir = core.Vector(0.1, 1.0, 0.5)
             light_dir.normalize()
-            light_dir *= i_cam_mat
-            GL.glUniform4fv(shader.uniforms['dirToLight'], 1, light_dir.tolist())
+            GL.glUniform4fv(shader.uniforms['dirToLight'], 1, list(light_dir))
+
+        # # draw scene origin cubes
+        # #
+        # with self.shaders['skin'] as shader:
+        #     mat = core.Matrix()
+        #     mat.scale(0.1)
+        #     GL.glUniformMatrix4fv(
+        #             shader.uniforms['modelToWorldMatrix'],
+        #             1,
+        #             GL.GL_FALSE,
+        #             mat.tolist())
+        #     GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
+        #     self.cube.render()
+        #
+        #     mat = core.Matrix()
+        #     mat.scale(0.1)
+        #     mat.translate([1,0,0])
+        #     GL.glUniformMatrix4fv(
+        #             shader.uniforms['modelToWorldMatrix'],
+        #             1,
+        #             GL.GL_FALSE,
+        #             mat.tolist())
+        #     GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
+        #     self.cube.render()
+        #
+        #     mat = core.Matrix()
+        #     mat.scale(0.1)
+        #     mat.translate([0,1,0])
+        #     GL.glUniformMatrix4fv(
+        #             shader.uniforms['modelToWorldMatrix'],
+        #             1,
+        #             GL.GL_FALSE,
+        #             mat.tolist())
+        #     GL.glUniform4f(shader.uniforms['diffuseColor'], 0.0, 1.0, 0.0, 1.0)
+        #     self.cube.render()
+        #
+        #     mat = core.Matrix()
+        #     mat.scale(0.1)
+        #     mat.translate([0,0,1])
+        #     GL.glUniformMatrix4fv(
+        #             shader.uniforms['modelToWorldMatrix'],
+        #             1,
+        #             GL.GL_FALSE,
+        #             mat.tolist())
+        #     GL.glUniform4f(shader.uniforms['diffuseColor'], 0.0, 0.0, 1.0, 1.0)
+        #     self.cube.render()
 
         self.world.render()
         self.player.render()
-
-        # self.world.render(self)
-        # self.collider.render(self)
 
         glfw.SwapBuffers()
         
@@ -227,110 +287,4 @@ class Game(object):
             except:
                 glfw.Terminate()
                 raise
-
-FRAGMENT_SHADER = '''
-#version 330
-
-smooth in vec4 interpColor;
-
-out vec4 outputColor;
-
-void main()
-{
-    outputColor = interpColor;
-}
-'''.strip()
-
-# # light from camera
-# #
-# VERTEX_SHADER = '''
-# #version 330
-
-# layout(location = 0) in vec3 position;
-# layout(location = 1) in vec3 normal;
-
-# smooth out vec4 interpColor;
-
-# uniform vec4 lightIntensity;
-# uniform vec4 diffuseColor;
-
-# uniform mat4 cameraToClipMatrix;
-# uniform mat4 worldToCameraMatrix;
-# uniform mat4 modelToWorldMatrix;
-
-# void main()
-# {
-#     vec4 position_in_world = modelToWorldMatrix * vec4(position, 1.0);
-#     gl_Position = cameraToClipMatrix * worldToCameraMatrix * position_in_world;
-
-#     vec4 normal_in_world = normalize(modelToWorldMatrix * vec4(normal, 0.0));
-#     vec4 cam_position = normalize(inverse(worldToCameraMatrix) * vec4(0.0, 0.0, 0.0, 1.0));
-
-#     float cosAngIncidence = dot(normal_in_world, cam_position);
-#     cosAngIncidence = clamp(cosAngIncidence, 0, 1);
-    
-#     interpColor = lightIntensity * diffuseColor * cosAngIncidence;
-# }
-# '''.strip()
-
-# directional light with ambient lighting
-#
-VERTEX_SHADER = '''
-#version 330
-
-layout(location = 0) in vec3 position;
-layout(location = 1) in vec3 normal;
-
-smooth out vec4 interpColor;
-
-uniform vec4 lightIntensity;
-uniform vec4 ambientIntensity;
-uniform vec4 diffuseColor;
-uniform vec4 dirToLight;
-
-uniform mat4 cameraToClipMatrix;
-uniform mat4 worldToCameraMatrix;
-uniform mat4 modelToWorldMatrix;
-
-void main()
-{
-    mat4 model_to_camera = worldToCameraMatrix * modelToWorldMatrix;
-    gl_Position = cameraToClipMatrix * model_to_camera * vec4(position, 1.0);
-
-    vec4 normal_in_world = normalize(model_to_camera * vec4(normal, 0.0));
-
-    float cosAngIncidence = dot(normal_in_world, dirToLight);
-    cosAngIncidence = clamp(cosAngIncidence, 0, 1);
-
-    float mult = ((position[1])/20.0);
-    interpColor = ((diffuseColor * lightIntensity * cosAngIncidence) +
-        (diffuseColor * ambientIntensity)) * vec4(mult,mult,mult,1.0);
-
-}
-'''.strip()
-
-
-# constant color
-#
-CONSTANT_SHADER = '''
-#version 330
-
-layout(location = 0) in vec3 position;
-layout(location = 1) in vec3 normal;
-
-smooth out vec4 interpColor;
-
-uniform vec4 color;
-
-uniform mat4 cameraToClipMatrix;
-uniform mat4 worldToCameraMatrix;
-uniform mat4 modelToWorldMatrix;
-
-void main()
-{
-    mat4 model_to_camera = worldToCameraMatrix * modelToWorldMatrix;
-    gl_Position = cameraToClipMatrix * model_to_camera * vec4(position, 1.0);
-    interpColor = color;
-}
-'''.strip()
 
