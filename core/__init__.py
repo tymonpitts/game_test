@@ -11,5 +11,6 @@ from .bounding_box import BoundingBox
 from .shader import BaseShader
 from .mesh import Mesh
 from .octree import Octree
+from .quadtree import QuadTree
 from .abstract_camera import AbstractCamera
 

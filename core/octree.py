@@ -2,7 +2,6 @@ __all__ = ['Octree']
 
 #============================================================================#
 #================================================================= IMPORTS ==#
-
 from . import abstract_tree
 
 
@@ -17,7 +16,22 @@ class _OctreeLeaf(abstract_tree.AbstractTreeLeaf):
 
 
 class Octree(abstract_tree.AbstractTree):
+    """
+    Child indices:
+            +y:
+
+        -z  2 3
+        +z  6 7
+           -x +x
+
+            -y:
+
+        -z  0 1
+        +z  4 5
+           -x +x
+    """
     _DIMENSIONS = 3
+    _BITWISE_NUMS = (1, 2, 4)
 
 
 _OctreeBranch._TREE_CLS = Octree

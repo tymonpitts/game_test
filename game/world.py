@@ -110,10 +110,10 @@ class _WorldOctreeBranch(AbstractWorldOctreeBase, octree._OctreeBranch):
     def _get_height(self, info, x, z):
         origin = info['origin']
         index1 = 0
-        if x >= origin.x: index1 |= 4
-        if z >= origin.z: index1 |= 1
+        if x >= origin.x: index1 |= self._TREE_CLS._BITWISE_NUMS[0]
+        if z >= origin.z: index1 |= self._TREE_CLS._BITWISE_NUMS[2]
         index2 = index1
-        index1 |= 2
+        index1 |= self._TREE_CLS._BITWISE_NUMS[1]
 
         child1 = self._children[index1]
         height = child1._get_height(self._get_child_info(info, index1), x, z)
@@ -145,10 +145,10 @@ class _WorldOctreeBranch(AbstractWorldOctreeBase, octree._OctreeBranch):
 
         stime = time.time()
         half_size = info['size'] * 0.5
-        offset = [0.0, 0.0, 0.0]
-        offset[0] = half_size if index&4 else -half_size
-        offset[1] = half_size if index&2 else -half_size
-        offset[2] = half_size if index&1 else -half_size
+        offset = []
+        for i, num in enumerate(self._TREE_CLS._BITWISE_NUMS):
+            offset.append( half_size if index&num else -half_size )
+
         top_node._mesh_times['get_child_info: get offset'] += time.time() - stime
 
         stime = time.time()
@@ -201,7 +201,7 @@ class _WorldOctreeBranch(AbstractWorldOctreeBase, octree._OctreeBranch):
         elif all_leaf:
             self._children[indices[0]] = self._TREE_CLS._LEAF_CLS(1)
         else:
-            self._children[indices[0]] = self._TREE_CLS._INTERIOR_CLS()
+            self._children[indices[0]] = self._TREE_CLS._BRANCH_CLS()
             self._children[indices[0]]._init_from_height_map(self._get_child_info(info, indices[0]), values)
 
         # handle bottom
@@ -209,7 +209,7 @@ class _WorldOctreeBranch(AbstractWorldOctreeBase, octree._OctreeBranch):
         if min_ > origin or all_leaf:
             self._children[indices[1]] = self._TREE_CLS._LEAF_CLS(1)
         else:
-            self._children[indices[1]] = self._TREE_CLS._INTERIOR_CLS()
+            self._children[indices[1]] = self._TREE_CLS._BRANCH_CLS()
             self._children[indices[1]]._init_from_height_map(self._get_child_info(info, indices[1]), values)
 
     def _init_from_height_map(self, info, values):
@@ -227,7 +227,7 @@ class _WorldOctreeBranch(AbstractWorldOctreeBase, octree._OctreeBranch):
         o o
         """
         v = values[:size, :size]
-        indices = (2, 0) # top bottom
+        indices = (2, 0) # -x -z
         self._init_column_from_height_map(info, v, indices, min_height, max_height, origin)
 
         """
@@ -235,7 +235,7 @@ class _WorldOctreeBranch(AbstractWorldOctreeBase, octree._OctreeBranch):
         o o
         """
         v = values[size:full_size, :size]
-        indices = (6, 4) # top bottom
+        indices = (3, 1) # +x -z
         self._init_column_from_height_map(info, v, indices, min_height, max_height, origin)
 
         """
@@ -243,7 +243,7 @@ class _WorldOctreeBranch(AbstractWorldOctreeBase, octree._OctreeBranch):
         x o
         """
         v = values[:size, size:full_size]
-        indices = (3, 1) # top bottom
+        indices = (6, 4) # -x +z
         self._init_column_from_height_map(info, v, indices, min_height, max_height, origin)
 
         """
@@ -251,7 +251,7 @@ class _WorldOctreeBranch(AbstractWorldOctreeBase, octree._OctreeBranch):
         o x
         """
         v = values[size:full_size, size:full_size]
-        indices = (7, 5) # top bottom
+        indices = (7, 5) # +x +z
         self._init_column_from_height_map(info, v, indices, min_height, max_height, origin)
 
     def _get_collisions(self, info, bbox):
