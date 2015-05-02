@@ -76,9 +76,12 @@ class AbstractTree(object):
     _BITWISE_NUMS = None
 
     def __init__(self, size):
-        super(AbstractTree, self).__init__()
-        self._root = self._BRANCH_CLS()
         self._size = size
+        self._root = None
+        self._root = self._create_root()
+
+    def _create_root(self):
+        return self._BRANCH_CLS()
 
     def _get_info(self):
         info = dict()
