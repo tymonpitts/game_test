@@ -11,10 +11,7 @@ from .. import core
 
 
 class Game(object):
-    INSTANCE = None
-
     def __init__(self):
-        type(self).INSTANCE = self
         self.mouse_movement = (0.0,0.0)
 
         self.pressed_keys = set()

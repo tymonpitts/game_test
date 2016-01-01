@@ -10,7 +10,7 @@ from ..data import cube
 from .. import core
 from ..core import octree
 from . import blocks
-
+from . import GAME
 
 
 #============================================================================#
@@ -308,12 +308,12 @@ class _WorldOctreeLeaf(AbstractWorldOctreeBase, octree._OctreeLeaf):
     #     mat[3,1] = info['origin'][1]
     #     mat[3,2] = info['origin'][2]
 
-    #     # if info['game'].do_printing:
+    #     # if GAME.do_printing:
     #     #     print 'rendering debug cube:'
     #     #     print mat
 
     #     GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, mat.tolist())
-    #     info['game'].cube.render()
+    #     GAME.cube.render()
 
     def _get_height(self, info, x, z):
         if not self._data:
@@ -367,23 +367,23 @@ class _WorldOctreeLeaf(AbstractWorldOctreeBase, octree._OctreeLeaf):
             return []
 
     def _get_blocks(self, info, bbox, exclude_types, inclusive):
-        block_cls = info['game'].get_block_cls(self._data)
+        block_cls = GAME.get_block_cls(self._data)
         if block_cls in exclude_types:
             return []
 
         this_bbox = self._get_bbox(info)
         collision = this_bbox.intersection(bbox, inclusive)
         if collision:
-            return [block_cls(info['game'], self, info)]
+            return [block_cls(GAME, self, info)]
         else:
             return []
 
     def _get_block(self, info, point):
-        block_cls = info['game'].get_block_cls(self._data)
-        return block_cls(info['game'], self, info)
+        block_cls = GAME.get_block_cls(self._data)
+        return block_cls(GAME, self, info)
 
     def _is_grounded(self, info, bbox):
-        block_cls = info['game'].get_block_cls(self._data)
+        block_cls = GAME.get_block_cls(self._data)
         if not block_cls.is_solid():
             return False
 
@@ -392,8 +392,10 @@ class _WorldOctreeLeaf(AbstractWorldOctreeBase, octree._OctreeLeaf):
 
 
 class World(octree.Octree):
-    def __init__(self, game, size):
-        self.game = game
+    def __init__(self, size):
+        """
+        :param int size:
+        """
         super(World, self).__init__(size)
         self.mesh = None
 
@@ -438,11 +440,6 @@ class World(octree.Octree):
         # print '  unaccounted for:', (total_time - accounted_time)
         # print '  TOTAL:', total_time
         print 'mesh generation time:', total_time
-
-    def _get_info(self):
-        info = super(World, self)._get_info()
-        info['game'] = self.game
-        return info
 
     def _generate_height_map(self):
         """generates a height map using a modified diamond-square algorithm
