@@ -1,19 +1,12 @@
-__all__ = ['AbstractTree']
-
-#============================================================================#
-#================================================================= IMPORTS ==#
 from . import Point
 
+__all__ = ['AbstractTree', 'AbstractTreeBranch', 'AbstractTreeLeaf']
 
-#============================================================================#
-#=================================================================== CLASS ==#
 class AbstractTreeBranch(object):
     _TREE_CLS = None
 
     def __init__(self):
-        self._children = None
-        # num_children = pow(2, self._TREE_CLS._DIMENSIONS)
-        # self._children = tuple([self._TREE_CLS._LEAF_CLS() for i in xrange(num_children)])
+        self._children = [None] * (2**self._TREE_CLS._DIMENSIONS)
 
     def _get_child_info(self, info, index, copy=True):
         if copy:
@@ -41,7 +34,15 @@ class AbstractTreeBranch(object):
 
     def _get_point(self, info, point):
         index = self._child_index_closest_to_point(info, point)
-        return self._children[index]._get_point(self._get_child_info(info, index), point)
+        child_info = self._get_child_info(info, index)
+        try:
+            return self._children[index]._get_point(child_info, point)
+        except AttributeError:  # child is None
+            assert self._children[index] is None
+            return self._generate_point(info, point)
+
+    def _generate_point(self, info, point):
+        raise NotImplementedError
 
     def _child_index_closest_to_point(self, info, point):
         index = 0
