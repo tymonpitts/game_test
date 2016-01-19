@@ -30,7 +30,7 @@ for level in xrange(levels):
     if level != (levels-1):
         index = branch._child_index_closest_to_point(info, access_point)
         branch._children[index] = tree._BRANCH_CLS()
-        branch._get_child_info(info, index, copy=False)
+        branch.get_child_info(info, index, copy=False)
         branch = branch._children[index]
 print 'Initialized: time=%s' % (time.time() - start_time)
 
@@ -39,7 +39,7 @@ print 'Initialized: time=%s' % (time.time() - start_time)
 start_time = time.time()
 num = 1000
 for i in xrange(num):
-    tree.get_point(access_point)
+    tree.get_node(access_point)
 t = time.time() - start_time
 print 'Time for %s accesses: %s' % (num, t)
 

@@ -7,8 +7,9 @@ class AbstractTreeBranch(object):
 
     def __init__(self):
         self._children = [None] * (2**self._TREE_CLS._DIMENSIONS)
+        """:type: list[None|`AbstractTreeBranch`|`AbstractLeafBranch`]"""
 
-    def _get_child_info(self, info, index, copy=True):
+    def get_child_info(self, info, index, copy=True):
         if copy:
             info = info.copy()
             info['origin'] = info['origin'].copy()
@@ -30,28 +31,39 @@ class AbstractTreeBranch(object):
 
     def iter_children_info(self, info):
         for index, child in enumerate(self._children):
-            yield (child, self._get_child_info(info, index))
+            yield (child, self.get_child_info(info, index, copy=True))
 
-    def _get_point(self, info, point):
-        index = self._child_index_closest_to_point(info, point)
-        child_info = self._get_child_info(info, index)
+    def get_max_depth_node(self, info, point, max_depth):
+        if info['level'] >= max_depth:
+            return self, info
+        index = self.get_closest_child_index(info, point)
+        child_info = self.get_child_info(info, index, copy=True)
         try:
-            return self._children[index]._get_point(child_info, point)
+            return self._children[index].get_max_depth_node(child_info, point, max_depth)
         except AttributeError:  # child is None
             assert self._children[index] is None
-            return self._generate_point(info, point)
+            return self.generate_node(info, point, max_depth)
 
-    def _generate_point(self, info, point):
+    def get_node(self, info, point):
+        index = self.get_closest_child_index(info, point)
+        child_info = self.get_child_info(info, index, copy=True)
+        try:
+            return self._children[index].get_node(child_info, point)
+        except AttributeError:  # child is None
+            if self._children[index] is not None:
+                raise
+            return self.generate_node(info, point)
+
+    def generate_node(self, info, point, max_depth=None):
         raise NotImplementedError
 
-    def _child_index_closest_to_point(self, info, point):
+    def get_closest_child_index(self, info, point):
         index = 0
         origin = info['origin']
         for i,num in enumerate(self._TREE_CLS._BITWISE_NUMS):
             if point[i] >= origin[i]: index |= num
 
         return index
-
 
 class AbstractTreeLeaf(object):
     _TREE_CLS = None
@@ -66,9 +78,11 @@ class AbstractTreeLeaf(object):
         self._data = data
         # TODO: possibly merge here
 
-    def _get_point(self, info, point):
+    def get_node(self, info, point):
         return self, info
 
+    def get_max_depth_node(self, info, point, max_depth):
+        return self, info
 
 class AbstractTree(object):
     _LEAF_CLS = None
@@ -76,9 +90,9 @@ class AbstractTree(object):
     _DIMENSIONS = None
     _BITWISE_NUMS = None
 
-    def __init__(self, size):
+    def __init__(self, size, max_depth):
         self._size = size
-        self._root = None
+        self._max_depth = max_depth
         self._root = self._create_root()
 
     def _create_root(self):
@@ -87,9 +101,11 @@ class AbstractTree(object):
     def _get_info(self):
         info = dict()
         info['level'] = 1
+        info['max_depth'] = self.max_depth()
         info['size'] = self.size()
         info['origin'] = self.origin()
-        info['parents'] = [self]
+        info['parents'] = []
+        info['tree'] = self
         return info
 
     def origin(self):
@@ -98,13 +114,18 @@ class AbstractTree(object):
     def size(self):
         return self._size
 
-    def get_point(self, point):
+    def max_depth(self):
+        return self._max_depth
+
+    def get_node(self, point, max_depth=None):
         half_size = self.size() / 2.0
         for i in xrange(self._DIMENSIONS):
             if abs(point[i]) > half_size:
                 return (None, None)
-        return self._root._get_point(self._get_info(), point)
-
+        if max_depth is None:
+            return self._root.get_node(self._get_info(), point)
+        else:
+            return self._root.get_max_depth_node(self._get_info(), point, max_depth)
 
 AbstractTreeBranch._TREE_CLS = AbstractTree
 AbstractTreeLeaf._TREE_CLS = AbstractTree

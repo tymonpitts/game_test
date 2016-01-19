@@ -116,12 +116,12 @@ class _WorldOctreeBranch(AbstractWorldOctreeBase, octree._OctreeBranch):
         index1 |= self._TREE_CLS._BITWISE_NUMS[1]
 
         child1 = self._children[index1]
-        height = child1._get_height(self._get_child_info(info, index1), x, z)
+        height = child1._get_height(self.get_child_info(info, index1), x, z)
         if height is not None:
             return height
 
         child2 = self._children[index2]
-        return child2._get_height(self._get_child_info(info, index2), x, z)
+        return child2._get_height(self.get_child_info(info, index2), x, z)
 
     def _get_child_info__debug(self, info, index, copy=True):
         top_node = info['parents'][0]
@@ -202,7 +202,7 @@ class _WorldOctreeBranch(AbstractWorldOctreeBase, octree._OctreeBranch):
             self._children[indices[0]] = self._TREE_CLS._LEAF_CLS(1)
         else:
             self._children[indices[0]] = self._TREE_CLS._BRANCH_CLS()
-            self._children[indices[0]]._init_from_height_map(self._get_child_info(info, indices[0]), values)
+            self._children[indices[0]]._init_from_height_map(self.get_child_info(info, indices[0]), values)
 
         # handle bottom
         #
@@ -210,7 +210,7 @@ class _WorldOctreeBranch(AbstractWorldOctreeBase, octree._OctreeBranch):
             self._children[indices[1]] = self._TREE_CLS._LEAF_CLS(1)
         else:
             self._children[indices[1]] = self._TREE_CLS._BRANCH_CLS()
-            self._children[indices[1]]._init_from_height_map(self._get_child_info(info, indices[1]), values)
+            self._children[indices[1]]._init_from_height_map(self.get_child_info(info, indices[1]), values)
 
     def _init_from_height_map(self, info, values):
         # gather data to initialize each column individually
@@ -274,9 +274,9 @@ class _WorldOctreeBranch(AbstractWorldOctreeBase, octree._OctreeBranch):
         return results
 
     def _get_block(self, info, point):
-        index = self._child_index_closest_to_point(info, point)
+        index = self.get_closest_child_index(info, point)
         child = self._children[index]
-        child_info = self._get_child_info(info, index)
+        child_info = self.get_child_info(info, index)
         return child._get_block(child_info, point)
 
     def _is_grounded(self, info, bbox):

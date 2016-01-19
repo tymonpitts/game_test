@@ -6,6 +6,6 @@
 # import imp
 # game_test = imp.load_source('game_test', game_test_path)
 
-import game_test
-game_test.main()
+import tempest
+tempest.main()
 
