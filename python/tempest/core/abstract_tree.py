@@ -6,7 +6,7 @@ class AbstractTreeBranch(object):
     _TREE_CLS = None
 
     def __init__(self):
-        self._children = [None] * (2**self._TREE_CLS._DIMENSIONS)
+        self._children = [None for i in xrange(2**self._TREE_CLS._DIMENSIONS)]
         """:type: list[None|`AbstractTreeBranch`|`AbstractLeafBranch`]"""
 
     def get_child_info(self, info, index, copy=True):
@@ -42,7 +42,7 @@ class AbstractTreeBranch(object):
             return self._children[index].get_max_depth_node(child_info, point, max_depth)
         except AttributeError:  # child is None
             assert self._children[index] is None
-            return self.generate_node(info, point, max_depth)
+            return self.generate_node(info, point, max_depth, child_info)
 
     def get_node(self, info, point):
         index = self.get_closest_child_index(info, point)
@@ -52,9 +52,9 @@ class AbstractTreeBranch(object):
         except AttributeError:  # child is None
             if self._children[index] is not None:
                 raise
-            return self.generate_node(info, point)
+            return self.generate_node(info, point, child_info=child_info)
 
-    def generate_node(self, info, point, max_depth=None):
+    def generate_node(self, info, point, max_depth=None, child_info=None):
         raise NotImplementedError
 
     def get_closest_child_index(self, info, point):
