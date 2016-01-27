@@ -78,17 +78,24 @@ class _HeightMapBranch(quadtree._QuadTreeBranch):
         rand.jumpahead( child_info['origin'].x )
         rand.jumpahead( child_info['origin'].y )
 
-        max_deviation = 1.0 / float(info['level']**2)
-        deviation = rand.gauss(0.0, max_deviation)
-        return avg_parent_height + (deviation * info['tree']._max_height)
+        # max_deviation = 1.0 / float(info['level']**2)
+        # max_deviation = info['tree'].size() / 2**info['level']
+        max_deviation = info['tree']._max_height / 2**(info['level']**0.92)
+        deviation = rand.uniform(-max_deviation, max_deviation)
+        return avg_parent_height + deviation
 
     def generate_node(self, info, point, max_depth=None, child_info=None):
         if max_depth is not None and info['level'] >= max_depth:
             return self, info
         if info['origin'].x == point.x and info['origin'].y == point.y:
             return self, info
-        index = self.get_closest_child_index(info, point)
-        child_info = child_info or self.get_child_info(info, index, copy=True)
+
+        if child_info is None:
+            index = self.get_closest_child_index(info, point)
+            child_info = self.get_child_info(info, index, copy=True)
+        else:
+            index = child_info['index']
+
         height = self._generate_node_height(info, point, child_info)
         if child_info['level'] >= info['tree'].max_depth():
             cls = self._TREE_CLS._LEAF_CLS
@@ -99,7 +106,7 @@ class _HeightMapBranch(quadtree._QuadTreeBranch):
             self._children[index] = cls(height)
             return self._children[index].generate_node(child_info, point, max_depth)
 
-    def generate_all_nodes(self, info, max_depth=None):
+    def _generate_all_nodes(self, info, max_depth=None):
         if max_depth and info['level'] >= max_depth:
             return
         children = []
@@ -109,7 +116,7 @@ class _HeightMapBranch(quadtree._QuadTreeBranch):
             children.append( (child, child_info) )
 
         for child, child_info in children:
-            child.generate_all_nodes(child_info, max_depth)
+            child._generate_all_nodes(child_info, max_depth)
 
     def get_points(self, info):
         points = []
@@ -122,18 +129,21 @@ class _HeightMapBranch(quadtree._QuadTreeBranch):
                 points.append(point)
         return points
 
-    def _generate_mesh(self, info):
+    def _generate_debug_mesh(self, info):
         if None in self._children:
             x = info['origin'].x
-            y = self._data
             z = info['origin'].y
+            bottom = info['tree'].size() / -2.0
             size = info['size']
             normals = info['cube'].NORMALS
             cube_verts = info['cube'].VERTICES
             verts = []
             for i in xrange(0, len(cube_verts), 3):
                 verts.append(x + cube_verts[i] * size)
-                verts.append(y + cube_verts[i + 1] * size)
+                if cube_verts[i + 1] < 0.0:
+                    verts.append(bottom)
+                else:
+                    verts.append(self._data)
                 verts.append(z + cube_verts[i + 2] * size)
 
             indices = [i + info['index_offset'] for i in info['cube'].INDICES]
@@ -143,33 +153,50 @@ class _HeightMapBranch(quadtree._QuadTreeBranch):
         normals = []
         indices = []
         for child, child_info in self.iter_children_info(info):
-            c_verts, c_normals, c_indices = child._generate_mesh(child_info)
+            c_verts, c_normals, c_indices = child._generate_debug_mesh(child_info)
             info['index_offset'] += len(c_verts) / 3
             verts.extend(c_verts)
             normals.extend(c_normals)
             indices.extend(c_indices)
         return verts, normals, indices
 
+    def generate(self, info, point):
+        for child, child_info in self.iter_children_info(info):
+            distance = point.distance( child_info['origin'] )
+            max_distance = child_info['size'] * child_info['level']
+            if distance <= max_distance:
+                if child is None:
+                    child, child_info = self.generate_node(info, child_info['origin'], max_depth=child_info['level'], child_info=child_info)
+                child.generate(child_info, point)
+            else:
+                self._children[ child_info['index'] ] = None
+
 class _HeightMapLeaf(quadtree._QuadTreeLeaf):
-    def generate_all_nodes(self, info, max_depth=None):
+    def _generate_all_nodes(self, info, max_depth=None):
+        return
+
+    def generate(self, info, point):
         return
 
     def get_points(self, info):
         return [Point(info['origin'].x, self._data, info['origin'].y)]
 
-    def _generate_mesh(self, info):
+    def _generate_debug_mesh(self, info):
         # generate mesh data for this point
         #
         x = info['origin'].x
-        y = self._data
         z = info['origin'].y
+        bottom = info['tree'].size() / -2.0
         size = info['size']
         normals = info['cube'].NORMALS
         cube_verts = info['cube'].VERTICES
         verts = []
         for i in xrange(0, len(cube_verts), 3):
             verts.append(x + cube_verts[i] * size)
-            verts.append(y + cube_verts[i + 1] * size)
+            if cube_verts[i + 1] < 0.0:
+                verts.append(bottom)
+            else:
+                verts.append(self._data)
             verts.append(z + cube_verts[i + 2] * size)
 
         indices = [i + info['index_offset'] for i in info['cube'].INDICES]
@@ -182,10 +209,23 @@ class HeightMap(quadtree.QuadTree):
         self._max_height = max_height
         self._base_height = base_height
         self._points = None
+        self._textures = None
         super(HeightMap, self).__init__(size, max_depth)
 
-    def generate_all_nodes(self, max_depth=None):
-        self._root.generate_all_nodes(self._get_info(), max_depth=max_depth)
+    def generate(self, point):
+        """Generates nodes centered around `point`.
+
+        Falloff is based on size*depth
+
+        :type point: `Point`
+        """
+        self._root.generate(self._get_info(), point)
+        self._generate_debug_mesh()
+
+    def _generate_all_nodes(self, max_depth=None):
+        """Temporary debug function to generate all nodes to a certain depth
+        """
+        self._root._generate_all_nodes(self._get_info(), max_depth=max_depth)
 
     def _create_root(self):
         root = self._BRANCH_CLS( self._base_height )
@@ -197,14 +237,14 @@ class HeightMap(quadtree.QuadTree):
         info['seed'] = self._seed
         return info
 
-    def generate_mesh(self):
+    def _generate_debug_mesh(self):
         from OpenGL import GL
         from ..data import cube
         from . import Mesh
         info = self._get_info()
         info['cube'] = cube
         info['index_offset'] = 0
-        verts, normals, indices = self._root._generate_mesh(info)
+        verts, normals, indices = self._root._generate_debug_mesh(info)
         self.mesh = Mesh(verts, normals, indices, GL.GL_TRIANGLES)
 
     def render(self):
