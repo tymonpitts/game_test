@@ -45,6 +45,10 @@ class Game(object):
         with open(skin_shader_path, 'r') as handle:
             skin_shader = handle.read()
 
+        point_shader_path = os.path.join(shaders_dir, 'point.vert.glsl')
+        with open(point_shader_path, 'r') as handle:
+            point_shader = handle.read()
+
         constant_shader_path = os.path.join(shaders_dir, 'constant.vert.glsl')
         with open(constant_shader_path, 'r') as handle:
             constant_shader = handle.read()
@@ -60,6 +64,12 @@ class Game(object):
         with self.shaders['skin'] as shader:
             GL.glUniform4f(shader.uniforms['lightIntensity'], 0.8, 0.8, 0.8, 1.0)
             GL.glUniform4f(shader.uniforms['ambientIntensity'], 0.2, 0.2, 0.2, 1.0)
+
+        self.shaders['point'] = core.BaseShader(point_shader, frag_shader)
+        self.shaders['point'].store_uniform_location('modelToWorldMatrix')
+        self.shaders['point'].store_uniform_location('worldToCameraMatrix')
+        self.shaders['point'].store_uniform_location('cameraToClipMatrix')
+        self.shaders['point'].store_uniform_location('color')
 
         self.shaders['constant'] = core.BaseShader(constant_shader, frag_shader)
         self.shaders['constant'].store_uniform_location('modelToWorldMatrix')
