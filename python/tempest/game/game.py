@@ -151,6 +151,8 @@ class Game(object):
         random.seed(1121327837)
         i_cam_mat = self.player.camera_matrix().inverse()
         for shader in self.shaders.itervalues():
+            if 'worldToCameraMatrix' not in shader.uniforms:
+                continue
             with shader:
                 GL.glUniformMatrix4fv(shader.uniforms['worldToCameraMatrix'], 1, GL.GL_FALSE, i_cam_mat.tolist())
 
@@ -213,6 +215,8 @@ class Game(object):
     def reshape(self, w, h):
         self.player.reshape(w, h)
         for shader in self.shaders.itervalues():
+            if 'cameraToClipMatrix' not in shader.uniforms:
+                continue
             with shader:
                 GL.glUniformMatrix4fv(
                         shader.uniforms['cameraToClipMatrix'], 
