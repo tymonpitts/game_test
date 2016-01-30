@@ -14,6 +14,8 @@ class AbstractTreeBranch(object):
             info = info.copy()
             info['origin'] = info['origin'].copy()
             info['parents'] = list(info['parents'])
+            info['parent_indices'] = list(info['parent_indices'])
+        info['parent_indices'].append( info['index'] )
         info['level'] += 1
         info['size'] *= 0.5
         info['index'] = index
@@ -100,11 +102,13 @@ class AbstractTree(object):
 
     def _get_info(self):
         info = dict()
+        info['index'] = 0
         info['level'] = 1
         info['max_depth'] = self.max_depth()
         info['size'] = self.size()
         info['origin'] = self.origin()
         info['parents'] = []
+        info['parent_indices'] = []
         info['tree'] = self
         return info
 
