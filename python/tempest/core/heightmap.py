@@ -97,8 +97,7 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
         avg_parent_height /= float( len(corner_points) )
 
         rand = random.Random( info['seed'] )
-        rand.jumpahead( child_info['origin'].x )
-        rand.jumpahead( child_info['origin'].y )
+        rand.jumpahead( (child_info['origin'].x, child_info['origin'].y) )  # jumpahead is expensive so only doing it once for both x and y
 
         # max_deviation = 1.0 / float(info['level']**2)
         # max_deviation = info['tree'].size() / 2**info['level']
