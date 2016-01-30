@@ -42,6 +42,7 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             -y  0 1
                -x +x
         """
+        half_tree_size = info['tree'].size() / 2.0
         corner_points = [
             Point(*info['origin']),
             Point(*info['origin']),
@@ -63,9 +64,14 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             """
             corner_points[1].x += info['size']
             corner_points[3].x += info['size']
-
             corner_weights[1] += 1.0
             corner_weights[3] += 1.0
+
+            # TODO: change this once you implement world patches
+            if corner_points[1].x >= half_tree_size:  # wrap to other side
+                new_x = -half_tree_size + info['size']
+                corner_points[1].x = new_x
+                corner_points[3].x = new_x
         else:
             """
             Child is in one of these spots:
@@ -74,9 +80,14 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             """
             corner_points[0].x -= info['size']
             corner_points[2].x -= info['size']
-
             corner_weights[0] += 1.0
             corner_weights[2] += 1.0
+
+            # TODO: change this once you implement world patches
+            if corner_points[0].x < -half_tree_size:  # wrap to other side
+                new_x = half_tree_size - info['size']
+                corner_points[0].x = new_x
+                corner_points[2].x = new_x
 
         if child_info['index'] & self._TREE_CLS._BITWISE_NUMS[1]:
             """
@@ -86,9 +97,14 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             """
             corner_points[2].y += info['size']
             corner_points[3].y += info['size']
-
             corner_weights[2] += 1.0
             corner_weights[3] += 1.0
+
+            # TODO: change this once you implement world patches
+            if corner_points[2].y >= half_tree_size:  # wrap to other side
+                new_y = -half_tree_size + info['size']
+                corner_points[2].y = new_y
+                corner_points[3].y = new_y
         else:
             """
             Child is in one of these spots:
@@ -97,18 +113,23 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             """
             corner_points[0].y -= info['size']
             corner_points[1].y -= info['size']
-
             corner_weights[0] += 1.0
             corner_weights[1] += 1.0
 
+            # TODO: change this once you implement world patches
+            if corner_points[0].y < -half_tree_size:  # wrap to other side
+                new_y = half_tree_size - info['size']
+                corner_points[0].y = new_y
+                corner_points[1].y = new_y
+
+        # TODO: weighted average is producing horizontal and vertical lines in height
         parent_height = 0.0
         for i, corner_point in enumerate(corner_points):
             if corner_point == info['origin']:
                 corner_item = self
             else:
+                # this should always return a proper item
                 corner_item = info['tree'].get_node(corner_point, max_depth=info['level'])[0]
-                if corner_item is None:  # TODO: properly deal with edges
-                    corner_item = info['tree']._root
             parent_height += corner_item._data * corner_weights[i]
         parent_height /= sum(corner_weights)
 
