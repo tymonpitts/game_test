@@ -48,6 +48,12 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             Point(*info['origin']),
             Point(*info['origin']),
         ]
+        corner_weights = [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+        ]
 
         if child_info['index'] & self._TREE_CLS._BITWISE_NUMS[0]:
             """
@@ -57,6 +63,9 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             """
             corner_points[1].x += info['size']
             corner_points[3].x += info['size']
+
+            corner_weights[1] += 1.0
+            corner_weights[3] += 1.0
         else:
             """
             Child is in one of these spots:
@@ -66,6 +75,9 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             corner_points[0].x -= info['size']
             corner_points[2].x -= info['size']
 
+            corner_weights[0] += 1.0
+            corner_weights[2] += 1.0
+
         if child_info['index'] & self._TREE_CLS._BITWISE_NUMS[1]:
             """
             Child is in one of these spots:
@@ -74,6 +86,9 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             """
             corner_points[2].y += info['size']
             corner_points[3].y += info['size']
+
+            corner_weights[2] += 1.0
+            corner_weights[3] += 1.0
         else:
             """
             Child is in one of these spots:
@@ -83,18 +98,19 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             corner_points[0].y -= info['size']
             corner_points[1].y -= info['size']
 
+            corner_weights[0] += 1.0
+            corner_weights[1] += 1.0
 
-        avg_parent_height = 0.0
-        for corner_point in corner_points:
+        parent_height = 0.0
+        for i, corner_point in enumerate(corner_points):
             if corner_point == info['origin']:
                 corner_item = self
             else:
                 corner_item = info['tree'].get_node(corner_point, max_depth=info['level'])[0]
                 if corner_item is None:  # TODO: properly deal with edges
-                    avg_parent_height += info['tree']._root._data
-                    continue
-            avg_parent_height += corner_item._data
-        avg_parent_height /= float( len(corner_points) )
+                    corner_item = info['tree']._root
+            parent_height += corner_item._data * corner_weights[i]
+        parent_height /= sum(corner_weights)
 
         rand = random.Random( info['seed'] )
         rand.jumpahead( (child_info['origin'].x, child_info['origin'].y) )  # jumpahead is expensive so only doing it once for both x and y
@@ -103,7 +119,7 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
         # max_deviation = info['tree'].size() / 2**info['level']
         max_deviation = info['tree']._max_height / 2**(info['level']**0.92)
         deviation = rand.uniform(-max_deviation, max_deviation)
-        return avg_parent_height + deviation
+        return parent_height + deviation
 
     def generate_node(self, info, point, max_depth=None, child_info=None):
         if max_depth is not None and info['level'] >= max_depth:
