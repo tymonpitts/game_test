@@ -229,17 +229,38 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             else:
                 self._children[ child_info['index'] ] = None
 
+    def __generate_debug_texture__leaf(self, info, textures):
+        max_height = info['tree']._max_height
+        # data range: -max_height to max_height
+        color = (self._data + max_height) / (max_height*2.0)
+        for depth in xrange(info['level']-1, info['tree'].max_depth()):
+            start_index = 0
+            row_size = 2 ** depth
+            for parent_depth, parent_index in enumerate(info['parent_indices']+[info['index']]):
+                size = row_size / (2 ** parent_depth)
+                if parent_index & self._TREE_CLS._BITWISE_NUMS[0]:
+                    start_index += size
+                if parent_index & self._TREE_CLS._BITWISE_NUMS[1]:
+                    start_index += row_size * size
+            size = row_size / (2 ** (info['level']-1))
+            for row in xrange(size):
+                texture_index = start_index + (row * row_size)
+                texture_index *= 3
+                for i in xrange(size):
+                    i *= 3
+                    textures[depth][texture_index+i] = color
+                    textures[depth][texture_index+i+1] = color
+                    textures[depth][texture_index+i+2] = color
+
     def _generate_debug_texture(self, info, textures):
         super(_HeightMapBranch, self)._generate_debug_texture(info, textures)
         for child, child_info in self.iter_children_info(info):
             try:
                 child._generate_debug_texture(child_info, textures)
             except AttributeError:
-                raise
-                # TODO: implement for missing children
-                # if child is not None:
-                #     raise
-                # super(_HeightMapBranch, self)._generate_debug_texture(child_info, textures)
+                if child is not None:
+                    raise
+                self.__generate_debug_texture__leaf(child_info, textures)
 
 class _HeightMapLeaf(quadtree._QuadTreeLeaf, _HeightMapNodeMixin):
     def _generate_all_nodes(self, info, max_depth=None):
@@ -289,7 +310,7 @@ class HeightMap(quadtree.QuadTree):
         :type point: `Point`
         """
         self._root.generate(self._get_info(), point)
-        self._generate_debug_mesh()
+        self._generate_debug_texture()
 
     def _generate_all_nodes(self, max_depth=None):
         """Temporary debug function to generate all nodes to a certain depth
@@ -386,10 +407,9 @@ class HeightMap(quadtree.QuadTree):
         GL.glBindVertexArray(0)
 
         # Create one OpenGL textures
-        self._textures = []
+        if not hasattr(self, '_textures'):
+            self._textures = [GL.glGenTextures(1) for i in xrange(self.max_depth())]
         for i in xrange(self.max_depth()):
-            self._textures.append( GL.glGenTextures(1) )
-
             # "Bind" the newly created texture : all future texture functions will modify this texture
             GL.glBindTexture(GL.GL_TEXTURE_2D, self._textures[i])
 
