@@ -12,5 +12,6 @@ from .shader import Shader
 from .mesh import Mesh
 from .octree import Octree
 from .quadtree import QuadTree
+from .heightmap import HeightMap
 from .abstract_camera import AbstractCamera
 
