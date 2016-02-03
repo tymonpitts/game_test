@@ -8,7 +8,7 @@ from OpenGL.GL.ARB import depth_clamp
 
 from .. import data
 from .. import core
-
+from .. import shaders
 
 class Game(object):
     def __init__(self):
@@ -32,50 +32,7 @@ class Game(object):
 
     def init(self):
         self.cube = core.Mesh(data.cube.VERTICES, data.cube.NORMALS, data.cube.INDICES, data.cube.DRAW_METHOD)
-
-        shaders_dir = os.path.dirname(__file__)
-        shaders_dir = os.path.join(shaders_dir, '../shaders')
-        shaders_dir = os.path.abspath(shaders_dir)
-
-        frag_shader_path = os.path.join(shaders_dir, 'frag.frag.glsl')
-        with open(frag_shader_path, 'r') as handle:
-            frag_shader = handle.read()
-
-        skin_shader_path = os.path.join(shaders_dir, 'skin.vert.glsl')
-        with open(skin_shader_path, 'r') as handle:
-            skin_shader = handle.read()
-
-        point_shader_path = os.path.join(shaders_dir, 'point.vert.glsl')
-        with open(point_shader_path, 'r') as handle:
-            point_shader = handle.read()
-
-        constant_shader_path = os.path.join(shaders_dir, 'constant.vert.glsl')
-        with open(constant_shader_path, 'r') as handle:
-            constant_shader = handle.read()
-
-        self.shaders['skin'] = core.BaseShader(skin_shader, frag_shader)
-        self.shaders['skin'].store_uniform_location('modelToWorldMatrix')
-        self.shaders['skin'].store_uniform_location('worldToCameraMatrix')
-        self.shaders['skin'].store_uniform_location('cameraToClipMatrix')
-        self.shaders['skin'].store_uniform_location('lightIntensity')
-        self.shaders['skin'].store_uniform_location('ambientIntensity')
-        self.shaders['skin'].store_uniform_location('diffuseColor')
-        self.shaders['skin'].store_uniform_location('dirToLight')
-        with self.shaders['skin'] as shader:
-            GL.glUniform4f(shader.uniforms['lightIntensity'], 0.8, 0.8, 0.8, 1.0)
-            GL.glUniform4f(shader.uniforms['ambientIntensity'], 0.2, 0.2, 0.2, 1.0)
-
-        self.shaders['point'] = core.BaseShader(point_shader, frag_shader)
-        self.shaders['point'].store_uniform_location('modelToWorldMatrix')
-        self.shaders['point'].store_uniform_location('worldToCameraMatrix')
-        self.shaders['point'].store_uniform_location('cameraToClipMatrix')
-        self.shaders['point'].store_uniform_location('color')
-
-        self.shaders['constant'] = core.BaseShader(constant_shader, frag_shader)
-        self.shaders['constant'].store_uniform_location('modelToWorldMatrix')
-        self.shaders['constant'].store_uniform_location('worldToCameraMatrix')
-        self.shaders['constant'].store_uniform_location('cameraToClipMatrix')
-        self.shaders['constant'].store_uniform_location('color')
+        self.shaders = shaders.init()
 
         self.register_blocks()
 

@@ -8,7 +8,7 @@ from .vector import Vector
 
 from .bounding_box import BoundingBox
 
-from .shader import BaseShader
+from .shader import Shader
 from .mesh import Mesh
 from .octree import Octree
 from .quadtree import QuadTree

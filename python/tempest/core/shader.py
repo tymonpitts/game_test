@@ -1,8 +1,8 @@
 from OpenGL import GL
-from OpenGL.GL.shaders import compileShader, compileProgram
+from OpenGL.GL.shaders import compileProgram
 
 _TMP_VAO = None
-class BaseShader(object):
+class Shader(object):
     _TMP_VAO = None
     def __init__(self, vertex_shader, fragment_shader):
         global _TMP_VAO
@@ -10,12 +10,7 @@ class BaseShader(object):
             _TMP_VAO = GL.glGenVertexArrays(1)
         GL.glBindVertexArray(_TMP_VAO)
 
-        shaderList = []
-
-        shaderList.append(compileShader(vertex_shader, GL.GL_VERTEX_SHADER))
-        shaderList.append(compileShader(fragment_shader, GL.GL_FRAGMENT_SHADER))
-
-        self.program = compileProgram(*shaderList)
+        self.program = compileProgram(vertex_shader, fragment_shader)
         self.uniforms = {}
 
     def store_uniform_location(self, name):
