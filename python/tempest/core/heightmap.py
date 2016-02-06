@@ -4,25 +4,29 @@ import glfw
 
 from . import quadtree
 from . import Point
+from . import BoundingBox2D
 
 class _HeightMapNodeMixin(object):
-    def _generate_debug_texture(self, info, textures):
-        max_height = info['tree']._max_height
+    def _generate_debug_texture(self, info, viewport, width, height, texture):
+        """
+        :type info: dict
+        :type viewport: `BoundingBox2D`
+        :type width: int
+        :type height: int
+        :type texture: list[float]
+        """
         # data range: -max_height to max_height
+        max_height = info['tree']._max_height
         color = (self._data + max_height) / (max_height*2.0)
-        texture_index = 0
-        row_size = 2**(info['level']-1)
-        for depth, index in enumerate(info['parent_indices']+[info['index']]):
-            size = row_size/(2**depth)
-            if index & self._TREE_CLS._BITWISE_NUMS[0]:
-                texture_index += size
-            if index & self._TREE_CLS._BITWISE_NUMS[1]:
-                texture_index += row_size * size
 
+        # TODO: update viewport._min reference once BoundingBox2D class has been refactored
+        half_size = info['size'] / 2.0
+        relative_bottom_left = (info['origin'] - Point(half_size, half_size)) - viewport._min
+        texture_index = (int(relative_bottom_left.y/info['min_size']) * width) + int(relative_bottom_left.x/info['min_size'])
         texture_index *= 3
-        textures[ info['level']-1 ][texture_index] = color
-        textures[ info['level']-1 ][texture_index+1] = color
-        textures[ info['level']-1 ][texture_index+2] = color
+        texture[texture_index] = color
+        texture[texture_index+1] = color
+        texture[texture_index+2] = color
 
 class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
     def __init__(self, data):
@@ -143,7 +147,7 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
         return parent_height + deviation
 
     def generate_node(self, info, point, max_depth=None, child_info=None):
-        if max_depth is not None and info['level'] >= max_depth:
+        if max_depth is not None and info['level'] > max_depth:
             return self, info
         if info['origin'].x == point.x and info['origin'].y == point.y:
             return self, info
@@ -155,7 +159,7 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             index = child_info['index']
 
         height = self._generate_node_height(info, point, child_info)
-        if child_info['level'] >= info['tree'].max_depth():
+        if child_info['level'] > info['tree'].max_depth():
             cls = self._TREE_CLS._LEAF_CLS
             self._children[index] = cls(height)
             return self._children[index], child_info
@@ -181,7 +185,7 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             max_distance = child_info['size'] * child_info['level']
             if distance <= max_distance:
                 if child is None:
-                    child, child_info = self.generate_node(info, child_info['origin'], max_depth=child_info['level'], child_info=child_info)
+                    child, child_info = self.generate_node(info, child_info['origin'], max_depth=(child_info['level']-1), child_info=child_info)
                 child.generate(child_info, point)
             else:
                 self._children[ child_info['index'] ] = None
@@ -229,38 +233,67 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             indices.extend(c_indices)
         return verts, normals, indices
 
-    def __generate_debug_texture__leaf(self, info, textures):
-        max_height = info['tree']._max_height
+    def __generate_debug_texture__leaf(self, info, child_info, viewport, width, height, texture):
+        """
+        :type info: dict
+        :type child_info: dict
+        :type viewport: `BoundingBox2D`
+        :type width: int
+        :type height: int
+        :type texture: list[float]
+        """
         # data range: -max_height to max_height
+        max_height = child_info['tree']._max_height
         color = (self._data + max_height) / (max_height*2.0)
-        for depth in xrange(info['level']-1, info['tree'].max_depth()):
-            start_index = 0
-            row_size = 2 ** depth
-            for parent_depth, parent_index in enumerate(info['parent_indices']+[info['index']]):
-                size = row_size / (2 ** parent_depth)
-                if parent_index & self._TREE_CLS._BITWISE_NUMS[0]:
-                    start_index += size
-                if parent_index & self._TREE_CLS._BITWISE_NUMS[1]:
-                    start_index += row_size * size
-            size = row_size / (2 ** (info['level']-1))
-            for row in xrange(size):
-                texture_index = start_index + (row * row_size)
-                texture_index *= 3
-                for i in xrange(size):
-                    i *= 3
-                    textures[depth][texture_index+i] = color
-                    textures[depth][texture_index+i+1] = color
-                    textures[depth][texture_index+i+2] = color
 
-    def _generate_debug_texture(self, info, textures):
-        super(_HeightMapBranch, self)._generate_debug_texture(info, textures)
+        half_size = child_info['size'] / 2.0
+        relative_bottom_left = (child_info['origin'] - Point(half_size, half_size)) - viewport._min
+        # size = int(child_info['size'] / child_info['min_size'])  # size in pixels
+
+        # account for partially obscured nodes
+        #
+        sizes = [child_info['size'], child_info['size']]
+        relative_max = viewport._max + viewport._max
+        for i in xrange(2):
+            if relative_bottom_left[i] < 0.0:
+                sizes[i] += relative_bottom_left[i]
+                relative_bottom_left[i] = 0.0
+            if (relative_bottom_left[i]+sizes[i]) > relative_max[i]:
+                sizes[i] -= relative_bottom_left[i] + sizes[i] - relative_max[i]
+        pixel_sizes = [int(s / child_info['min_size']) for s in sizes]
+
+        start_index = (int(relative_bottom_left.y/child_info['min_size']) * width) + int(relative_bottom_left.x/child_info['min_size'])
+        for row in xrange(pixel_sizes[1]):
+            index = start_index + (row * width)
+            index *= 3
+            for column in xrange(pixel_sizes[0]):
+                column *= 3
+                texture[index+column] = color
+                texture[index+column+1] = color
+                texture[index+column+2] = color
+
+    def _generate_debug_texture(self, info, viewport, width, height, texture):
+        """
+        :type info: dict
+        :param viewport: viewport BoudingBox in actual heightmap coordinates (not pixels)
+        :type viewport: `BoundingBox2D`
+        :param int width: viewport width in pixels
+        :param int height: viewport height in pixels
+        :type texture: list[float]
+        """
+        # TODO: this bbox stuff could probably be a little faster
+        half_child_size = info['size'] / 4.0
+        half_child_size_point = Point(half_child_size, half_child_size)
         for child, child_info in self.iter_children_info(info):
+            child_bbox = BoundingBox2D(child_info['origin']-half_child_size_point, child_info['origin']+half_child_size_point)
+            if not viewport.collides(child_bbox):
+                continue
             try:
-                child._generate_debug_texture(child_info, textures)
+                child._generate_debug_texture(child_info, viewport, width, height, texture)
             except AttributeError:
                 if child is not None:
                     raise
-                self.__generate_debug_texture__leaf(child_info, textures)
+                self.__generate_debug_texture__leaf(info, child_info, viewport, width, height, texture)
 
 class _HeightMapLeaf(quadtree._QuadTreeLeaf, _HeightMapNodeMixin):
     def generate(self, info, point):

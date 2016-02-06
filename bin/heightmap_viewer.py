@@ -21,16 +21,14 @@ class HeightMapViewer(core.AbstractWindow):
         self.heightmap = None
         """:type: `core.HeightMap`"""
 
-        self.depth = 0
-
         self.texture_quad_vao = None
         """:type: int"""
 
-        self.texture_data = None
-        """:type: list[ list[float] ]"""
-
-        self.textures = None
+        self.texture = None
         """:type: list[int]"""
+
+        self.initialized = False
+        self.center = core.Point()
 
     # def _generate_debug_mesh(self):
     #     info = self.heightmap._get_info()
@@ -39,10 +37,11 @@ class HeightMapViewer(core.AbstractWindow):
     #     verts, normals, indices = self.heightmap._root._generate_debug_mesh(info)
     #     self.mesh = core.Mesh(verts, normals, indices, GL.GL_TRIANGLES)
 
-    def generate_debug_texture(self):
-        info = self.heightmap._get_info()
-        self.texture_data = [[0.0 for j in xrange(((2 ** i) ** 2) * 3)] for i in xrange(self.heightmap.max_depth())]
-        self.heightmap._root._generate_debug_texture(info, self.texture_data)
+    def generate_texture(self, width, height):
+        data = [1.0, 0.0, 0.0] * (width * height)
+        half_viewport_size = core.Point(width/2*self.heightmap.min_size(), height/2*self.heightmap.min_size())
+        viewport = core.BoundingBox2D(self.center-half_viewport_size, self.center+half_viewport_size)
+        self.heightmap._root._generate_debug_texture(self.heightmap._get_info(), viewport, width, height, data)
         verts = [
             -1.0,  1.0, 0.0,
              1.0,  1.0, 0.0,
@@ -105,52 +104,51 @@ class HeightMapViewer(core.AbstractWindow):
 
         GL.glBindVertexArray(0)
 
-        self.textures = []
-        for i in xrange( self.heightmap.max_depth() ):
-            # Create one OpenGL textures
-            self.textures.append( GL.glGenTextures(1) )
+        if self.texture is None:
+            self.texture = GL.glGenTextures(1)
 
-            # "Bind" the newly created texture : all future texture functions will modify this texture
-            GL.glBindTexture(GL.GL_TEXTURE_2D, self.textures[i])
+        # "Bind" the newly created texture : all future texture functions will modify this texture
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self.texture)
 
-            # Give the image to OpenGL
-            array_type = (GL.GLfloat * len(self.texture_data[i]))
-            GL.glTexImage2D(
-                GL.GL_TEXTURE_2D,
-                0,
-                GL.GL_RGB,
-                2**i,
-                2**i,
-                0,
-                GL.GL_RGB,
-                GL.GL_FLOAT,
-                array_type(*self.texture_data[i])
-            )
+        # Give the image to OpenGL
+        array_type = (GL.GLfloat * len(data))
+        GL.glTexImage2D(
+            GL.GL_TEXTURE_2D,
+            0,
+            GL.GL_RGB,
+            width,
+            height,
+            0,
+            GL.GL_RGB,
+            GL.GL_FLOAT,
+            array_type(*data)
+        )
 
-            GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST)
-            GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST)
 
     def init(self):
         super(HeightMapViewer, self).init()
-        glfw.Disable(glfw.MOUSE_CURSOR)
+        # glfw.Disable(glfw.MOUSE_CURSOR)
 
         self.shaders = shaders.init()
 
-        # self.heightmap = HeightMap(size=16, max_height=4.0, max_depth=4, seed=1121327837)
-        self.heightmap = core.HeightMap(size=256, max_height=128.0, max_depth=8, seed=1121327837)
-        # self.heightmap = HeightMap(size=512, max_height=256.0, max_depth=9, seed=1121327837)
-        # self.heightmap = HeightMap(size=2097152.0, max_height=8850.0, max_depth=23, seed=1121327837)
-        # self.heightmap = HeightMap(size=2097152.0, max_height=100.0, max_depth=23, seed=1121327837)
-        # self.heightmap = HeightMap(size=16384.0, max_height=100.0, max_depth=16, seed=1121327837)
+        # self.heightmap = core.HeightMap(size=16, max_height=4.0, max_depth=4, seed=1121327837)
+        # self.heightmap = core.HeightMap(size=256, max_height=128.0, max_depth=8, seed=1121327837)
+        self.heightmap = core.HeightMap(size=512, max_height=256.0, max_depth=9, seed=1121327837)
+        # self.heightmap = core.HeightMap(size=2097152.0, max_height=8850.0, max_depth=23, seed=1121327837)
+        # self.heightmap = core.HeightMap(size=2097152.0, max_height=100.0, max_depth=23, seed=1121327837)
+        # self.heightmap = core.HeightMap(size=16384.0, max_height=100.0, max_depth=16, seed=1121327837)
 
         # import cProfile
         # cProfile.run('from tempest.game import Game; Game.INSTANCE.world._generate_all_nodes()')
         # import sys
         # sys.exit(0)
-        with Timer('HeightMap generation', log=True):
+        with Timer('HeightMap.generate()', log=True):
             # self.heightmap._generate_all_nodes()
             self.heightmap.generate( core.Point() )
-            self.generate_debug_texture()
+        with Timer('generate texture', log=True):
+            self.generate_texture(self.initial_width, self.initial_height)
         # self.heightmap._generate_debug_texture()
         # self.heightmap._generate_debug_mesh()
 
@@ -160,18 +158,10 @@ class HeightMapViewer(core.AbstractWindow):
         # y = self.heightmap.get_height(x,z)
         # self.player = Player(self, [x, y, z])
 
-    def keyboard_event(self, key, press):
-        if press:
-            if key == glfw.KEY_DOWN and glfw.KEY_DOWN not in self.pressed_keys:
-                self.depth -= 1
-                if self.depth < 0:
-                    self.depth = 0
-            if key == glfw.KEY_UP and glfw.KEY_UP not in self.pressed_keys:
-                self.depth += 1
-                if self.depth >= len(self.textures):
-                    self.depth = len(self.textures) - 1
-
-        super(HeightMapViewer, self).keyboard_event(key, press)
+    def reshape(self, w, h):
+        super(HeightMapViewer, self).reshape(w, h)
+        if self.initialized:
+            self.generate_texture(w, h)
 
     def integrate(self, t, delta_time):
         pass
@@ -180,7 +170,7 @@ class HeightMapViewer(core.AbstractWindow):
         with self.shaders['heightmap'] as shader:
             # Bind our texture in Texture Unit 0
             GL.glActiveTexture(GL.GL_TEXTURE0)
-            GL.glBindTexture(GL.GL_TEXTURE_2D, self.textures[self.depth])
+            GL.glBindTexture(GL.GL_TEXTURE_2D, self.texture)
             # Set our "myTextureSampler" sampler to user Texture Unit 0
             GL.glUniform1i(shader.uniforms['textureSampler'], 0)
 
