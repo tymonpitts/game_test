@@ -1,5 +1,8 @@
 from . import Point
-class BoundingBox(object):
+
+class AbstractBoundingBox(object):
+    _DIMENSIONS = None  # abstract
+
     def __init__(self, min=None, max=None):
         self._min = None
         self._max = None
@@ -24,21 +27,12 @@ class BoundingBox(object):
     def get_dimension(self, index):
         return self._max[index] - self._min[index]
 
-    def width(self):
-        return self.get_dimension(0)
-
-    def height(self):
-        return self.get_dimension(1)
-
-    def depth(self):
-        return self.get_dimension(2)
-
     def center(self):
-        data = [(self._min[i]+self._max[i]) / 2.0 for i in xrange(3)]
+        data = [(self._min[i]+self._max[i]) / 2.0 for i in xrange(self._DIMENSIONS)]
         return Point(*data)
 
     def copy(self):
-        bbox = BoundingBox()
+        bbox = type(self)()
         bbox._min = self._min.copy()
         bbox._max = self._max.copy()
         return bbox
@@ -53,12 +47,12 @@ class BoundingBox(object):
             self._max = point.copy()
             return
 
-        for i in xrange(3):
+        for i in xrange(self._DIMENSIONS):
             self._min[i] = min(self._min[i], point[i])
             self._max[i] = max(self._max[i], point[i])
 
     def uniform_expand(self, value):
-        for i in xrange(3):
+        for i in xrange(self._DIMENSIONS):
             self._min[i] -= value
             self._max[i] += value
 
@@ -68,13 +62,13 @@ class BoundingBox(object):
             self._max = other._max.copy()
             return
 
-        for i in xrange(3):
+        for i in xrange(self._DIMENSIONS):
             self._min[i] = min(self._min[i], other._min[i])
             self._max[i] = max(self._max[i], other._max[i])
 
     def volume(self):
         volume = 1.0
-        for i in xrange(3):
+        for i in xrange(self._DIMENSIONS):
             length = self._max[i] - self._min[i]
             volume *= length
         return volume
@@ -82,12 +76,14 @@ class BoundingBox(object):
     def intersection(self, other, inclusive=[]):
         if not self.collides(other, inclusive):
             return None
-        min_ = [max(self._min[i], other._min[i]) for i in xrange(3)]
-        max_ = [min(self._max[i], other._max[i]) for i in xrange(3)]
-        return BoundingBox(min_, max_)
+        min_ = [max(self._min[i], other._min[i]) for i in xrange(self._DIMENSIONS)]
+        max_ = [min(self._max[i], other._max[i]) for i in xrange(self._DIMENSIONS)]
+        return type(self)(min_, max_)
 
+    # TODO: fix mutable argument
+    # TODO: rename BoundingBox.collides to "intersects"
     def collides(self, other, inclusive=[]):
-        for i in xrange(3):
+        for i in xrange(self._DIMENSIONS):
             if i in inclusive: func_suffix = 't'
             else: func_suffix = 'e'
 
@@ -110,3 +106,23 @@ class BoundingBox(object):
         bbox._max += pos
         return bbox
 
+class BoundingBox(AbstractBoundingBox):
+    _DIMENSIONS = 3
+
+    def width(self):
+        return self.get_dimension(0)
+
+    def height(self):
+        return self.get_dimension(1)
+
+    def depth(self):
+        return self.get_dimension(2)
+
+class BoundingBox2D(AbstractBoundingBox):
+    _DIMENSIONS = 2
+
+    def width(self):
+        return self.get_dimension(0)
+
+    def height(self):
+        return self.get_dimension(1)

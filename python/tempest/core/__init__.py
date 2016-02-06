@@ -8,7 +8,7 @@ from .matrix import Matrix, MatrixStack
 from .point import Point
 from .vector import Vector
 
-from .bounding_box import BoundingBox
+from .bounding_box import BoundingBox, BoundingBox2D
 
 from .shader import ShaderProgram
 from .mesh import Mesh
