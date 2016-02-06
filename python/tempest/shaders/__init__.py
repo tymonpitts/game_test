@@ -1,5 +1,6 @@
 import os
 import glob
+import re
 from .. import core
 from OpenGL import GL
 from OpenGL.GL.shaders import compileShader
@@ -9,14 +10,14 @@ def init():
 
     frag_shaders = {}
     for frag_shader_path in glob.iglob('%s/*.frag.glsl' % shaders_dir):
-        name = os.path.basename(frag_shader_path).rstrip('.frag.glsl')
+        name = re.sub( r'\.frag\.glsl$', '', os.path.basename(frag_shader_path) )
         with open(frag_shader_path, 'r') as handle:
             contents = handle.read()
         frag_shaders[name] = compileShader(contents, GL.GL_FRAGMENT_SHADER)
 
     vert_shaders = {}
     for vert_shader_path in glob.iglob('%s/*.vert.glsl' % shaders_dir):
-        name = os.path.basename(vert_shader_path).rstrip('.vert.glsl')
+        name = re.sub( r'\.vert\.glsl$', '', os.path.basename(vert_shader_path) )
         with open(vert_shader_path, 'r') as handle:
             contents = handle.read()
         vert_shaders[name] = compileShader(contents, GL.GL_VERTEX_SHADER)
