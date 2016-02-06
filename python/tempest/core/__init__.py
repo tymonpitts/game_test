@@ -10,7 +10,7 @@ from .vector import Vector
 
 from .bounding_box import BoundingBox
 
-from .shader import Shader
+from .shader import ShaderProgram
 from .mesh import Mesh
 from .octree import Octree
 from .quadtree import QuadTree
