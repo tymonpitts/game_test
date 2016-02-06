@@ -93,8 +93,9 @@ class AbstractTree(object):
     _BITWISE_NUMS = None
 
     def __init__(self, size, max_depth):
-        self._size = size
-        self._max_depth = max_depth
+        self._size = float(size)
+        self._max_depth = int(max_depth)
+        self._min_size = self._size / 2.0 ** self._max_depth
         self._root = self._create_root()
 
     def _create_root(self):
@@ -105,6 +106,7 @@ class AbstractTree(object):
         info['index'] = 0
         info['level'] = 1
         info['max_depth'] = self.max_depth()
+        info['min_size'] = self.min_size()
         info['size'] = self.size()
         info['origin'] = self.origin()
         info['parents'] = []
@@ -120,6 +122,9 @@ class AbstractTree(object):
 
     def max_depth(self):
         return self._max_depth
+
+    def min_size(self):
+        return self._min_size
 
     def get_node(self, point, max_depth=None):
         half_size = self.size() / 2.0
