@@ -164,6 +164,28 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             self._children[index] = cls(height)
             return self._children[index].generate_node(child_info, point, max_depth)
 
+    def get_points(self, info):
+        points = []
+        for i, child in enumerate(self._children):
+            child_info = self.get_child_info(info, i, copy=True)
+            if child:
+                points.extend( child.get_points(child_info) )
+            else:
+                point = Point(child_info['origin'].x, self._data, child_info['origin'].y)
+                points.append(point)
+        return points
+
+    def generate(self, info, point):
+        for child, child_info in self.iter_children_info(info):
+            distance = point.distance( child_info['origin'] )
+            max_distance = child_info['size'] * child_info['level']
+            if distance <= max_distance:
+                if child is None:
+                    child, child_info = self.generate_node(info, child_info['origin'], max_depth=child_info['level'], child_info=child_info)
+                child.generate(child_info, point)
+            else:
+                self._children[ child_info['index'] ] = None
+
     def _generate_all_nodes(self, info, max_depth=None):
         if max_depth and info['level'] >= max_depth:
             return
@@ -175,17 +197,6 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
 
         for child, child_info in children:
             child._generate_all_nodes(child_info, max_depth)
-
-    def get_points(self, info):
-        points = []
-        for i, child in enumerate(self._children):
-            child_info = self.get_child_info(info, i, copy=True)
-            if child:
-                points.extend( child.get_points(child_info) )
-            else:
-                point = Point(child_info['origin'].x, self._data, child_info['origin'].y)
-                points.append(point)
-        return points
 
     def _generate_debug_mesh(self, info):
         if None in self._children:
@@ -217,17 +228,6 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             normals.extend(c_normals)
             indices.extend(c_indices)
         return verts, normals, indices
-
-    def generate(self, info, point):
-        for child, child_info in self.iter_children_info(info):
-            distance = point.distance( child_info['origin'] )
-            max_distance = child_info['size'] * child_info['level']
-            if distance <= max_distance:
-                if child is None:
-                    child, child_info = self.generate_node(info, child_info['origin'], max_depth=child_info['level'], child_info=child_info)
-                child.generate(child_info, point)
-            else:
-                self._children[ child_info['index'] ] = None
 
     def __generate_debug_texture__leaf(self, info, textures):
         max_height = info['tree']._max_height
@@ -263,14 +263,14 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
                 self.__generate_debug_texture__leaf(child_info, textures)
 
 class _HeightMapLeaf(quadtree._QuadTreeLeaf, _HeightMapNodeMixin):
-    def _generate_all_nodes(self, info, max_depth=None):
-        return
-
     def generate(self, info, point):
         return
 
     def get_points(self, info):
         return [Point(info['origin'].x, self._data, info['origin'].y)]
+
+    def _generate_all_nodes(self, info, max_depth=None):
+        return
 
     def _generate_debug_mesh(self, info):
         # generate mesh data for this point
@@ -294,7 +294,6 @@ class _HeightMapLeaf(quadtree._QuadTreeLeaf, _HeightMapNodeMixin):
         return verts, normals, indices
 
 class HeightMap(quadtree.QuadTree):
-    INDENT = 0
     def __init__(self, size, max_height, max_depth, seed, base_height=0.0):
         self._seed = seed
         self._max_height = max_height
@@ -310,12 +309,6 @@ class HeightMap(quadtree.QuadTree):
         :type point: `Point`
         """
         self._root.generate(self._get_info(), point)
-        self._generate_debug_texture()
-
-    def _generate_all_nodes(self, max_depth=None):
-        """Temporary debug function to generate all nodes to a certain depth
-        """
-        self._root._generate_all_nodes(self._get_info(), max_depth=max_depth)
 
     def _create_root(self):
         root = self._BRANCH_CLS( self._base_height )
@@ -326,158 +319,6 @@ class HeightMap(quadtree.QuadTree):
         info = super(HeightMap, self)._get_info()
         info['seed'] = self._seed
         return info
-
-    def _generate_debug_mesh(self):
-        from OpenGL import GL
-        from ..data import cube
-        from . import Mesh
-        info = self._get_info()
-        info['cube'] = cube
-        info['index_offset'] = 0
-        verts, normals, indices = self._root._generate_debug_mesh(info)
-        self.mesh = Mesh(verts, normals, indices, GL.GL_TRIANGLES)
-
-    def _generate_debug_texture(self):
-        from OpenGL import GL
-        from . import FLOAT_SIZE
-        info = self._get_info()
-        self._render_depth = 0
-        self._texture_data = [[0.0 for j in xrange(((2**i)**2)*3)] for i in xrange(self._max_depth)]
-        self._root._generate_debug_texture(info, self._texture_data)
-        verts = [
-            -1.0,  1.0, 0.0,
-             1.0,  1.0, 0.0,
-             1.0, -1.0, 0.0,
-            -1.0, -1.0, 0.0,
-        ]
-        uvs = [
-            0.0, 1.0,
-            1.0, 1.0,
-            1.0, 0.0,
-            0.0, 0.0,
-        ]
-
-        self._vao = GL.glGenVertexArrays(1)
-        GL.glBindVertexArray(self._vao)
-
-        # generate vertex position buffer
-        #
-        vertexBufferObject = GL.glGenBuffers(1)
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vertexBufferObject)
-
-        array_type = (GL.GLfloat*len(verts))
-        GL.glBufferData(
-            GL.GL_ARRAY_BUFFER,
-            len(verts)*FLOAT_SIZE,
-            array_type(*verts),
-            GL.GL_STATIC_DRAW
-        )
-        GL.glEnableVertexAttribArray(0)
-        GL.glVertexAttribPointer(
-            0,              # attribute 0. No particular reason for 0, but must match the layout in the shader.
-            3,              # size
-            GL.GL_FLOAT,    # type
-            GL.GL_FALSE,    # normalized?
-            0,              # stride (offset from start of data)
-            None            # array buffer offset
-        )
-
-        # generate vertex uv buffer
-        #
-        uvBufferObject = GL.glGenBuffers(1)
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, uvBufferObject)
-
-        array_type = (GL.GLfloat*len(uvs))
-        GL.glBufferData(
-            GL.GL_ARRAY_BUFFER,
-            len(uvs)*FLOAT_SIZE,
-            array_type(*uvs),
-            GL.GL_STATIC_DRAW
-        )
-        GL.glEnableVertexAttribArray(1)
-        GL.glVertexAttribPointer(
-            1,              # attribute 1. No particular reason for 1, but must match the layout in the shader.
-            2,              # size
-            GL.GL_FLOAT,    # type
-            GL.GL_FALSE,    # normalized?
-            0,              # stride (offset from start of data)
-            None            # array buffer offset
-        )
-
-        GL.glBindVertexArray(0)
-
-        # Create one OpenGL textures
-        if not hasattr(self, '_textures'):
-            self._textures = [GL.glGenTextures(1) for i in xrange(self.max_depth())]
-        for i in xrange(self.max_depth()):
-            # "Bind" the newly created texture : all future texture functions will modify this texture
-            GL.glBindTexture(GL.GL_TEXTURE_2D, self._textures[i])
-
-            # Give the image to OpenGL
-            array_type = (GL.GLfloat*len(self._texture_data[i]))
-            GL.glTexImage2D(
-                GL.GL_TEXTURE_2D,
-                0,
-                GL.GL_RGB,
-                2**i,
-                2**i,
-                0,
-                GL.GL_RGB,
-                GL.GL_FLOAT,
-                array_type(*self._texture_data[i])
-            )
-
-            GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST)
-            GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST)
-
-    def handle_input(self):
-        from ..game import Game
-        if not hasattr(self, '_handled_keys'):
-            self._handled_keys = set()
-        if glfw.KEY_DOWN in Game.INSTANCE.pressed_keys:
-            if glfw.KEY_DOWN not in self._handled_keys:
-                self._render_depth -= 1
-                if self._render_depth < 0:
-                    self._render_depth = 0
-                self._handled_keys.add(glfw.KEY_DOWN)
-        elif glfw.KEY_DOWN in self._handled_keys:
-            self._handled_keys.remove(glfw.KEY_DOWN)
-
-        if glfw.KEY_UP in Game.INSTANCE.pressed_keys:
-            if glfw.KEY_UP not in self._handled_keys:
-                self._render_depth += 1
-                if self._render_depth >= len(self._textures):
-                    self._render_depth = len(self._textures)-1
-                self._handled_keys.add(glfw.KEY_UP)
-        elif glfw.KEY_UP in self._handled_keys:
-            self._handled_keys.remove(glfw.KEY_UP)
-
-    def render(self):
-        from OpenGL import GL
-        from ..game import Game
-        with Game.INSTANCE.shaders['heightmap'] as shader:
-            # Bind our texture in Texture Unit 0
-            GL.glActiveTexture(GL.GL_TEXTURE0)
-            GL.glBindTexture(GL.GL_TEXTURE_2D, self._textures[self._render_depth])
-            # Set our "myTextureSampler" sampler to user Texture Unit 0
-            GL.glUniform1i(shader.uniforms['textureSampler'], 0)
-
-            GL.glBindVertexArray(self._vao)
-            GL.glDrawArrays(GL.GL_TRIANGLE_FAN, 0, 4)  # Starting from vertex 0; 4 vertices total -> 2 triangles
-            GL.glBindVertexArray(0)
-
-        # from OpenGL import GL
-        # from ..game import Game
-        # from . import Matrix
-        # with Game.INSTANCE.shaders['skin'] as shader:
-        #     GL.glUniformMatrix4fv(
-        #         shader.uniforms['modelToWorldMatrix'],
-        #         1,
-        #         GL.GL_FALSE,
-        #         Matrix().tolist(),
-        #     )
-        #     GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 1.0, 0.5, 1.0)
-        #     self.mesh.render()
 
 _HeightMapBranch._TREE_CLS = HeightMap
 _HeightMapLeaf._TREE_CLS = HeightMap
