@@ -10,7 +10,7 @@ from ..data import cube
 from .. import core
 from ..core import octree
 from . import blocks
-from . import GAME
+from . import Game
 
 
 #============================================================================#
@@ -308,12 +308,12 @@ class _WorldOctreeLeaf(AbstractWorldOctreeBase, octree._OctreeLeaf):
     #     mat[3,1] = info['origin'][1]
     #     mat[3,2] = info['origin'][2]
 
-    #     # if GAME.do_printing:
+    #     # if Game.INSTANCE.do_printing:
     #     #     print 'rendering debug cube:'
     #     #     print mat
 
     #     GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, mat.tolist())
-    #     GAME.cube.render()
+    #     Game.INSTANCE.cube.render()
 
     def _get_height(self, info, x, z):
         if not self._data:
@@ -367,23 +367,23 @@ class _WorldOctreeLeaf(AbstractWorldOctreeBase, octree._OctreeLeaf):
             return []
 
     def _get_blocks(self, info, bbox, exclude_types, inclusive):
-        block_cls = GAME.get_block_cls(self._data)
+        block_cls = Game.INSTANCE.get_block_cls(self._data)
         if block_cls in exclude_types:
             return []
 
         this_bbox = self._get_bbox(info)
         collision = this_bbox.intersection(bbox, inclusive)
         if collision:
-            return [block_cls(GAME, self, info)]
+            return [block_cls(Game.INSTANCE, self, info)]
         else:
             return []
 
     def _get_block(self, info, point):
-        block_cls = GAME.get_block_cls(self._data)
-        return block_cls(GAME, self, info)
+        block_cls = Game.INSTANCE.get_block_cls(self._data)
+        return block_cls(Game.INSTANCE, self, info)
 
     def _is_grounded(self, info, bbox):
-        block_cls = GAME.get_block_cls(self._data)
+        block_cls = Game.INSTANCE.get_block_cls(self._data)
         if not block_cls.is_solid():
             return False
 

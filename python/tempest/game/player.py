@@ -4,7 +4,7 @@
 from OpenGL import GL
 
 from .. import core
-from . import GAME
+from . import Game
 
 #============================================================================#
 #=================================================================== CLASS ==#
@@ -34,10 +34,10 @@ class Player(core.AbstractCamera):
             mat[i,i] = bbox.get_dimension(i)
             mat[3,i] = center[i]
 
-        with GAME.shaders['skin'] as shader:
+        with Game.INSTANCE.shaders['skin'] as shader:
             GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
             GL.glUniformMatrix4fv(shader.uniforms['modelToWorldMatrix'], 1, GL.GL_FALSE, mat.tolist())
-            GAME.cube.render()
+            Game.INSTANCE.cube.render()
 
     def camera_matrix(self):
         offset = core.Matrix()
@@ -49,9 +49,9 @@ class Player(core.AbstractCamera):
     def update(self, time, delta_time):
         # add mouse_move to rotation values
         # 
-        self._rotx += GAME.mouse_movement[1]
+        self._rotx += Game.INSTANCE.mouse_movement[1]
         self._rotx = self.clamp_angle(self._rotx)
-        self._roty -= GAME.mouse_movement[0]
+        self._roty -= Game.INSTANCE.mouse_movement[0]
         ry = self._get_roty_matrix()
         rx = self._get_rotx_matrix()
 
@@ -93,7 +93,7 @@ class Player(core.AbstractCamera):
             bbox = core.BoundingBox()
             bbox.bbox_expand(bbox1)
             bbox.bbox_expand(bbox2)
-            blocks = GAME.world.get_blocks(bbox)
+            blocks = Game.INSTANCE.world.get_blocks(bbox)
 
             count = 0
             while blocks and (first_loop or solution_component is not None):
@@ -133,7 +133,7 @@ class Player(core.AbstractCamera):
             # determine if we are grounded or in the air
             #
             bbox = self._get_bbox_at_pos(self._pos)
-            self._grounded = GAME.world.is_grounded(bbox)
+            self._grounded = Game.INSTANCE.world.is_grounded(bbox)
 
         # resolve xform components to a full matrix
         #
@@ -141,7 +141,7 @@ class Player(core.AbstractCamera):
         for i in xrange(3):
             self.matrix[3,i] = self._pos[i]
 
-        if 'P' in GAME.pressed_keys:
+        if 'P' in Game.INSTANCE.pressed_keys:
             print 'pos:', self._pos
 
     def solve_collision(self, start_pos=None, velocity=None, blocks=None):
@@ -157,7 +157,7 @@ class Player(core.AbstractCamera):
             bbox = core.BoundingBox()
             bbox.bbox_expand(bbox1)
             bbox.bbox_expand(bbox2)
-            blocks = GAME.world.get_blocks(bbox)
+            blocks = Game.INSTANCE.world.get_blocks(bbox)
 
         # solve collisions for each block and use the solution with 
         # the smallest resulting velocity
@@ -189,13 +189,13 @@ class Player(core.AbstractCamera):
         #     max_frictional_force = kinetic_friction_coefficient * friction_normal_force
 
         force = core.Vector()
-        if 'W' in GAME.pressed_keys:
+        if 'W' in Game.INSTANCE.pressed_keys:
             force.z += 1.0
-        if 'S' in GAME.pressed_keys:
+        if 'S' in Game.INSTANCE.pressed_keys:
             force.z -= 1.0
-        if 'A' in GAME.pressed_keys:
+        if 'A' in Game.INSTANCE.pressed_keys:
             force.x += 1.0
-        if 'D' in GAME.pressed_keys:
+        if 'D' in Game.INSTANCE.pressed_keys:
             force.x -= 1.0
         if force.length():
             force.normalize()
@@ -212,20 +212,20 @@ class Player(core.AbstractCamera):
 
         # add jumping force
         #
-        if ' ' in GAME.pressed_keys:
+        if ' ' in Game.INSTANCE.pressed_keys:
             force.y += self.jump_force
 
         return (force / self.mass)
 
     def _get_acceleration_in_air(self, ry):
         force = core.Vector()
-        if 'W' in GAME.pressed_keys:
+        if 'W' in Game.INSTANCE.pressed_keys:
             force.z += 1.0
-        if 'S' in GAME.pressed_keys:
+        if 'S' in Game.INSTANCE.pressed_keys:
             force.z -= 1.0
-        if 'A' in GAME.pressed_keys:
+        if 'A' in Game.INSTANCE.pressed_keys:
             force.x += 1.0
-        if 'D' in GAME.pressed_keys:
+        if 'D' in Game.INSTANCE.pressed_keys:
             force.x -= 1.0
         force.normalize()
         force *= ry

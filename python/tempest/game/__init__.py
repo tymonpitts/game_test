@@ -1,2 +1,1 @@
-GAME = None
-""":type: game.Game"""
+from .game import Game

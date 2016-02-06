@@ -431,10 +431,10 @@ class HeightMap(quadtree.QuadTree):
             GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST)
 
     def handle_input(self):
-        from ..game import GAME
+        from ..game import Game
         if not hasattr(self, '_handled_keys'):
             self._handled_keys = set()
-        if glfw.KEY_DOWN in GAME.pressed_keys:
+        if glfw.KEY_DOWN in Game.INSTANCE.pressed_keys:
             if glfw.KEY_DOWN not in self._handled_keys:
                 self._render_depth -= 1
                 if self._render_depth < 0:
@@ -443,7 +443,7 @@ class HeightMap(quadtree.QuadTree):
         elif glfw.KEY_DOWN in self._handled_keys:
             self._handled_keys.remove(glfw.KEY_DOWN)
 
-        if glfw.KEY_UP in GAME.pressed_keys:
+        if glfw.KEY_UP in Game.INSTANCE.pressed_keys:
             if glfw.KEY_UP not in self._handled_keys:
                 self._render_depth += 1
                 if self._render_depth >= len(self._textures):
@@ -454,8 +454,8 @@ class HeightMap(quadtree.QuadTree):
 
     def render(self):
         from OpenGL import GL
-        from ..game import GAME
-        with GAME.shaders['heightmap'] as shader:
+        from ..game import Game
+        with Game.INSTANCE.shaders['heightmap'] as shader:
             # Bind our texture in Texture Unit 0
             GL.glActiveTexture(GL.GL_TEXTURE0)
             GL.glBindTexture(GL.GL_TEXTURE_2D, self._textures[self._render_depth])
@@ -467,9 +467,9 @@ class HeightMap(quadtree.QuadTree):
             GL.glBindVertexArray(0)
 
         # from OpenGL import GL
-        # from ..game import GAME
+        # from ..game import Game
         # from . import Matrix
-        # with GAME.shaders['skin'] as shader:
+        # with Game.INSTANCE.shaders['skin'] as shader:
         #     GL.glUniformMatrix4fv(
         #         shader.uniforms['modelToWorldMatrix'],
         #         1,

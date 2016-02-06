@@ -4,7 +4,7 @@
 import glfw
 
 from .. import core
-from . import GAME
+from . import Game
 
 
 #============================================================================#
@@ -23,26 +23,26 @@ class Spectator(core.AbstractCamera):
     def update(self, time, delta_time):
         # add mouse_move to rotation values
         #
-        self._rotx += GAME.mouse_movement[1]
+        self._rotx += Game.INSTANCE.mouse_movement[1]
         self._rotx = self.clamp_angle(self._rotx)
-        self._roty -= GAME.mouse_movement[0]
+        self._roty -= Game.INSTANCE.mouse_movement[0]
         ry = self._get_roty_matrix()
         rx = self._get_rotx_matrix()
 
         # add movement
         #
         translate = core.Vector()
-        if 'W' in GAME.pressed_keys:
+        if 'W' in Game.INSTANCE.pressed_keys:
             translate.z += self.acceleration_rate
-        if 'S' in GAME.pressed_keys:
+        if 'S' in Game.INSTANCE.pressed_keys:
             translate.z -= self.acceleration_rate
-        if 'A' in GAME.pressed_keys:
+        if 'A' in Game.INSTANCE.pressed_keys:
             translate.x += self.acceleration_rate
-        if 'D' in GAME.pressed_keys:
+        if 'D' in Game.INSTANCE.pressed_keys:
             translate.x -= self.acceleration_rate
-        if ' ' in GAME.pressed_keys:
+        if ' ' in Game.INSTANCE.pressed_keys:
             translate.y += self.acceleration_rate
-        if glfw.KEY_LSHIFT in GAME.pressed_keys:
+        if glfw.KEY_LSHIFT in Game.INSTANCE.pressed_keys:
             translate.y -= self.acceleration_rate
         translate *= delta_time
         translate *= ry

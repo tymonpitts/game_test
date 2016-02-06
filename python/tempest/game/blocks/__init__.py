@@ -180,23 +180,23 @@ class AbstractBlock(object):
         return True
         # stime = time.time()
         # bbox = self.bbox()
-        # GAME.world._mesh_times['should_generate_mesh: bbox'] += time.time() - stime
+        # Game.INSTANCE.world._mesh_times['should_generate_mesh: bbox'] += time.time() - stime
         # stime = time.time()
         # blocks = set()
-        # blocks.update(GAME.world.get_blocks(
+        # blocks.update(Game.INSTANCE.world.get_blocks(
         #         bbox, exclude_types=[], inclusive=[0]))
-        # blocks.update(GAME.world.get_blocks(
+        # blocks.update(Game.INSTANCE.world.get_blocks(
         #         bbox, exclude_types=[], inclusive=[1]))
-        # blocks.update(GAME.world.get_blocks(
+        # blocks.update(Game.INSTANCE.world.get_blocks(
         #         bbox, exclude_types=[], inclusive=[2]))
-        # GAME.world._mesh_times['should_generate_mesh: get_neighbors'] += time.time() - stime
+        # Game.INSTANCE.world._mesh_times['should_generate_mesh: get_neighbors'] += time.time() - stime
         # stime = time.time()
         # for block in blocks:
         #     if block == self:
         #         continue
         #     if block.should_neighbor_generate_mesh(self):
         #         return True
-        # GAME.world._mesh_times['should_generate_mesh: neighbor_check'] += time.time() - stime
+        # Game.INSTANCE.world._mesh_times['should_generate_mesh: neighbor_check'] += time.time() - stime
         # return False
 
 
