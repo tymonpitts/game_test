@@ -17,16 +17,24 @@ class _HeightMapNodeMixin(object):
         """
         # data range: -max_height to max_height
         max_height = info['tree']._max_height
-        color = (self._data + max_height) / (max_height*2.0)
+        if self._data <= 0.0:
+            r = g = (max_height+self._data) / max_height * 0.5
+            b = 1.0
+        elif self._data > max_height:
+            r = g = b = 1.0
+        else:
+            r = self._data / max_height
+            g = (max_height - self._data) / max_height
+            b = 0.0
 
         # TODO: update viewport._min reference once BoundingBox2D class has been refactored
         half_size = info['size'] / 2.0
         relative_bottom_left = (info['origin'] - Point(half_size, half_size)) - viewport._min
         texture_index = (int(relative_bottom_left.y/info['min_size']) * width) + int(relative_bottom_left.x/info['min_size'])
         texture_index *= 3
-        texture[texture_index] = color
-        texture[texture_index+1] = color
-        texture[texture_index+2] = color
+        texture[texture_index] = r
+        texture[texture_index+1] = g
+        texture[texture_index+2] = b
 
 class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
     def __init__(self, data):
@@ -244,7 +252,15 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
         """
         # data range: -max_height to max_height
         max_height = child_info['tree']._max_height
-        color = (self._data + max_height) / (max_height*2.0)
+        if self._data <= 0.0:
+            r = g = (max_height+self._data) / max_height * 0.5
+            b = 1.0
+        elif self._data > max_height:
+            r = g = b = 1.0
+        else:
+            r = self._data / max_height
+            g = (max_height - self._data) / max_height
+            b = 0.0
 
         half_size = child_info['size'] / 2.0
         relative_bottom_left = (child_info['origin'] - Point(half_size, half_size)) - viewport._min
@@ -268,9 +284,9 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             index *= 3
             for column in xrange(pixel_sizes[0]):
                 column *= 3
-                texture[index+column] = color
-                texture[index+column+1] = color
-                texture[index+column+2] = color
+                texture[index+column] = r
+                texture[index+column+1] = g
+                texture[index+column+2] = b
 
     def _generate_debug_texture(self, info, viewport, width, height, texture):
         """
