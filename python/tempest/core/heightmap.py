@@ -198,6 +198,18 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
             else:
                 self._children[ child_info['index'] ] = None
 
+    def generate_area(self, info, bbox):
+        half_child_size = info['size'] / 4.0
+        half_child_size_point = Point(half_child_size, half_child_size)
+        for child, child_info in self.iter_children_info(info):
+            child_bbox = BoundingBox2D(child_info['origin']-half_child_size_point, child_info['origin']+half_child_size_point)
+            if bbox.collides(child_bbox):
+                if child is None:
+                    child, child_info = self.generate_node(info, child_info['origin'], max_depth=(child_info['level']-1), child_info=child_info)
+                child.generate_area(child_info, bbox)
+            else:
+                self._children[ child_info['index'] ] = None
+
     def _generate_all_nodes(self, info, max_depth=None):
         if max_depth and info['level'] >= max_depth:
             return
@@ -315,6 +327,9 @@ class _HeightMapLeaf(quadtree._QuadTreeLeaf, _HeightMapNodeMixin):
     def generate(self, info, point):
         return
 
+    def generate_area(self, info, bbox):
+        return
+
     def get_points(self, info):
         return [Point(info['origin'].x, self._data, info['origin'].y)]
 
@@ -358,6 +373,13 @@ class HeightMap(quadtree.QuadTree):
         :type point: `Point`
         """
         self._root.generate(self._get_info(), point)
+
+    def generate_area(self, bbox):
+        """Generates all nodes within the provided `bbox`.
+
+        :type bbox: `BoundingBox2D`
+        """
+        self._root.generate_area(self._get_info(), bbox)
 
     def _create_root(self):
         root = self._BRANCH_CLS( self._base_height )
