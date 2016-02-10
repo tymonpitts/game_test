@@ -37,11 +37,7 @@ class HeightMapViewer(core.AbstractWindow):
     #     verts, normals, indices = self.heightmap._root._generate_debug_mesh(info)
     #     self.mesh = core.Mesh(verts, normals, indices, GL.GL_TRIANGLES)
 
-    def generate_texture(self, width, height):
-        data = [1.0, 0.0, 0.0] * (width * height)
-        half_viewport_size = core.Point(width/2*self.heightmap.min_size(), height/2*self.heightmap.min_size())
-        viewport = core.BoundingBox2D(self.center-half_viewport_size, self.center+half_viewport_size)
-        self.heightmap._root._generate_debug_texture(self.heightmap._get_info(), viewport, width, height, data)
+    def create_texture_vao(self):
         verts = [
             -1.0,  1.0, 0.0,
              1.0,  1.0, 0.0,
@@ -104,9 +100,17 @@ class HeightMapViewer(core.AbstractWindow):
 
         GL.glBindVertexArray(0)
 
+    def generate_texture(self, width, height):
+        data = [1.0, 0.0, 0.0] * (width * height)
+        half_viewport_size = core.Point(width/2*self.heightmap.min_size(), height/2*self.heightmap.min_size())
+        viewport = core.BoundingBox2D(self.center-half_viewport_size, self.center+half_viewport_size)
+        self.heightmap._root._generate_debug_texture(self.heightmap._get_info(), viewport, width, height, data)
+
+        if self.texture_quad_vao is None:
+            self.create_texture_vao()
+
         if self.texture is None:
             self.texture = GL.glGenTextures(1)
-
         # "Bind" the newly created texture : all future texture functions will modify this texture
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.texture)
 
@@ -147,6 +151,9 @@ class HeightMapViewer(core.AbstractWindow):
         with Timer('HeightMap.generate()', log=True):
             # self.heightmap._generate_all_nodes()
             self.heightmap.generate( core.Point() )
+            # half_viewport_size = core.Point(self.initial_width/2*self.heightmap.min_size(), self.initial_height/2*self.heightmap.min_size())
+            # viewport = core.BoundingBox2D(self.center-half_viewport_size, self.center+half_viewport_size)
+            # self.heightmap.generate_area(viewport)
         with Timer('generate texture', log=True):
             self.generate_texture(self.initial_width, self.initial_height)
         # self.heightmap._generate_debug_texture()
@@ -157,6 +164,20 @@ class HeightMapViewer(core.AbstractWindow):
         # z=-3.5
         # y = self.heightmap.get_height(x,z)
         # self.player = Player(self, [x, y, z])
+
+    def mouse_button_event(self, button, action):
+        """Called when a mouse button is pressed or released
+
+        :param int button: The pressed/released mouse button
+        :param int action: GLFW_PRESS or GLFW_RELEASE
+        """
+        if button == glfw.MOUSE_BUTTON_LEFT and action == glfw.GLFW_PRESS:
+            width, height = glfw.GetWindowSize()
+            x, y = glfw.GetMousePos()  # integer positions relative to the upper left corner of the window
+            x = x - (width / 2)
+            y = (height / 2) - y
+            self.heightmap.generate( core.Point(x, y) )
+            self.generate_texture(width, height)
 
     def reshape(self, w, h):
         super(HeightMapViewer, self).reshape(w, h)

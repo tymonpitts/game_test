@@ -35,6 +35,7 @@ class AbstractWindow(object):
         glfw.SetWindowTitle(self.title)
         glfw.SetWindowSizeCallback(self.reshape)
         glfw.SetKeyCallback(self.keyboard_event)
+        glfw.SetMouseButtonCallback(self.mouse_button_event)
 
         GL.glEnable(GL.GL_CULL_FACE)
         GL.glCullFace(GL.GL_BACK)
@@ -60,10 +61,19 @@ class AbstractWindow(object):
             glfw.Terminate()
             return
 
+        # TODO: possibly use glfwSetInputMode here instead
         if press:
             self.pressed_keys.add(key)
         else:
             self.pressed_keys.remove(key)
+
+    def mouse_button_event(self, button, action):
+        """Called when a mouse button is pressed or released
+
+        :param int button: The pressed/released mouse button
+        :param int action: GLFW_PRESS or GLFW_RELEASE
+        """
+        pass
 
     def clear(self):
         GL.glClearColor(0.5, 0.5, 0.5, 0.0)

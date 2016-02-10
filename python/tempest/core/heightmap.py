@@ -45,6 +45,8 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
 
     def _generate_node_height(self, info, point, child_info):
         assert self._children[ child_info['index'] ] is None
+        # if child_info['index'] == 0:
+        #     return self._data
 
         # find the items on this level that are adjacent to the new child item
         #
@@ -195,8 +197,8 @@ class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
                 if child is None:
                     child, child_info = self.generate_node(info, child_info['origin'], max_depth=(child_info['level']-1), child_info=child_info)
                 child.generate(child_info, point)
-            else:
-                self._children[ child_info['index'] ] = None
+            # else:
+            #     self._children[ child_info['index'] ] = None
 
     def generate_area(self, info, bbox):
         half_child_size = info['size'] / 4.0
