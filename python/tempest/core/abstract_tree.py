@@ -9,59 +9,105 @@ class AbstractTreeBranch(object):
         self._children = [None for i in xrange(2**self._TREE_CLS._DIMENSIONS)]
         """:type: list[None|`AbstractTreeBranch`|`AbstractLeafBranch`]"""
 
-    def get_child_info(self, info, index, copy=True):
-        if copy:
-            info = info.copy()
-            info['origin'] = info['origin'].copy()
-            info['parents'] = list(info['parents'])
-            info['parent_indices'] = list(info['parent_indices'])
+    def set_to_child_info(self, info, index):
         info['parent_indices'].append( info['index'] )
-        info['level'] += 1
-        info['size'] *= 0.5
-        info['index'] = index
         info['parents'].append(self)
+        info['index'] = index
 
-        half_size = info['size'] * 0.5
-        offset = []
-        for i, num in enumerate(self._TREE_CLS._BITWISE_NUMS):
-            offset.append( half_size if index&num else -half_size )
+    def set_to_parent_info(self, info):
+        info['index'] = info['parent_indices'].pop(-1)
+        info['parents'].pop(-1)
 
-        for i, component in enumerate(offset):
-            info['origin'][i] += component
+    # def get_child_info(self, info, index, copy=True):
+    #     if copy:
+    #         info = info.copy()
+    #         info['origin'] = info['origin'].copy()
+    #         info['parents'] = list(info['parents'])
+    #         info['parent_indices'] = list(info['parent_indices'])
+    #     info['parent_indices'].append( info['index'] )
+    #     info['level'] += 1
+    #     info['size'] *= 0.5
+    #     info['index'] = index
+    #     info['parents'].append(self)
+    #
+    #     half_size = info['size'] * 0.5
+    #     offset = []
+    #     for i, num in enumerate(self._TREE_CLS._BITWISE_NUMS):
+    #         offset.append( half_size if index&num else -half_size )
+    #
+    #     for i, component in enumerate(offset):
+    #         info['origin'][i] += component
+    #
+    #     return info
 
-        return info
-
+    # TODO: yielding child_info is pointless here since info will be set to that in place
     def iter_children_info(self, info):
+        """
+        WARNING: If you exit the iterator prematurely then call `set_to_parent_info`.
+            Otherwise `info` will be set to the info for one of this node's children.
+        """
+        self.set_to_child_info(info, 0)
         for index, child in enumerate(self._children):
-            yield (child, self.get_child_info(info, index, copy=True))
+            info['index'] = index
+            yield (child, info)
+        self.set_to_parent_info(info)
 
     def get_max_depth_node(self, info, point, max_depth):
-        if info['level'] >= max_depth:
+        if len(info['parents']) > max_depth:
             return self, info
         index = self.get_closest_child_index(info, point)
-        child_info = self.get_child_info(info, index, copy=True)
+        self.set_to_child_info(info, index)
         try:
-            return self._children[index].get_max_depth_node(child_info, point, max_depth)
-        except AttributeError:  # child is None
-            assert self._children[index] is None
-            return self.generate_node(info, point, max_depth, child_info)
-
-    def get_node(self, info, point):
-        index = self.get_closest_child_index(info, point)
-        child_info = self.get_child_info(info, index, copy=True)
-        try:
-            return self._children[index].get_node(child_info, point)
+            return self._children[index].get_max_depth_node(info, point, max_depth)
         except AttributeError:  # child is None
             if self._children[index] is not None:
                 raise
-            return self.generate_node(info, point, child_info=child_info)
+            self.set_to_parent_info(info)
+            return self.generate_node(info, point, max_depth)
 
-    def generate_node(self, info, point, max_depth=None, child_info=None):
+    def get_node(self, info, point):
+        index = self.get_closest_child_index(info, point)
+        self.set_to_child_info(info, index)
+        try:
+            return self._children[index].get_node(info, point)
+        except AttributeError:  # child is None
+            if self._children[index] is not None:
+                raise
+            self.set_to_parent_info(info)
+            return self.generate_node(info, point)
+
+    def generate_node(self, info, point, max_depth=None):
         raise NotImplementedError
+
+    def get_size(self, info):
+        tree_size = info['tree']._size
+        return tree_size ** ( 1.0/float( len(info['parents'])+1 ) )
+
+    def get_child_origin(self, size, origin, child_index):
+        result = origin.copy()
+        half_child_size = size * 0.25
+        for i, num in enumerate(self._TREE_CLS._BITWISE_NUMS):
+            if index & num:
+                result[i] += half_child_size
+            else:
+                result[i] -= half_child_size
+
+    def get_origin(self, info):
+        half_size = info['tree']._size * 0.5
+        result = Point()
+        for index in info['parent_indices'][1:]:
+            half_size *= 0.5
+            for i, num in enumerate(self._TREE_CLS._BITWISE_NUMS):
+                if index & num:
+                    result[i] += half_size
+                else:
+                    result[i] -= half_size
+        return result
 
     def get_closest_child_index(self, info, point):
         index = 0
-        origin = info['origin']
+        # TODO: should probably cache this somehow so we don't have to rebuild it at every level
+        origin = self.get_origin(info)
         for i,num in enumerate(self._TREE_CLS._BITWISE_NUMS):
             if point[i] >= origin[i]: index |= num
 
@@ -104,11 +150,6 @@ class AbstractTree(object):
     def _get_info(self):
         info = dict()
         info['index'] = 0
-        info['level'] = 1
-        info['max_depth'] = self.max_depth()
-        info['min_size'] = self.min_size()
-        info['size'] = self.size()
-        info['origin'] = self.origin()
         info['parents'] = []
         info['parent_indices'] = []
         info['tree'] = self
