@@ -1,7 +1,5 @@
 import random
 
-import glfw
-
 from . import quadtree
 from . import Point
 from . import BoundingBox2D

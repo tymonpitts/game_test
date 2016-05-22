@@ -1,22 +1,10 @@
-__all__ = ['Octree']
-
-#============================================================================#
-#================================================================= IMPORTS ==#
 from . import abstract_tree
 
-
-#============================================================================#
-#=================================================================== CLASS ==#
-class _OctreeBranch(abstract_tree.AbstractTreeBranch):
-    pass
-
-
-class _OctreeLeaf(abstract_tree.AbstractTreeLeaf):
-    pass
-
+__all__ = ['Octree']
 
 class Octree(abstract_tree.AbstractTree):
-    """
+    """ 3 dimensional tree storage
+
     Child indices:
             +y:
 
@@ -30,13 +18,6 @@ class Octree(abstract_tree.AbstractTree):
         +z  4 5
            -x +x
     """
-    _DIMENSIONS = 3
-    _BITWISE_NUMS = (1, 2, 4)
-
-
-_OctreeBranch._TREE_CLS = Octree
-_OctreeLeaf._TREE_CLS = Octree
-
-Octree._LEAF_CLS = _OctreeLeaf
-Octree._BRANCH_CLS = _OctreeBranch
+    DIMENSIONS = 3
+    BITWISE_NUMS = (1, 2, 4)
 

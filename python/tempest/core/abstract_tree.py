@@ -1,185 +1,211 @@
 from . import Point
 
-__all__ = ['AbstractTree', 'AbstractTreeBranch', 'AbstractTreeLeaf']
+__all__ = ['AbstractTree', 'TreeNode']
 
-class AbstractTreeBranch(object):
-    _TREE_CLS = None
+class TreeNode(object):
+    """ A temporary proxy to store runtime information about a node.
 
-    def __init__(self):
-        self._children = [None for i in xrange(2**self._TREE_CLS._DIMENSIONS)]
-        """:type: list[None|`AbstractTreeBranch`|`AbstractLeafBranch`]"""
+    Instances of this class should not be stored.
 
-    def set_to_child_info(self, info, index):
-        info['parent_indices'].append( info['index'] )
-        info['parents'].append(self)
-        info['index'] = index
-
-    def set_to_parent_info(self, info):
-        info['index'] = info['parent_indices'].pop(-1)
-        info['parents'].pop(-1)
-
-    # def get_child_info(self, info, index, copy=True):
-    #     if copy:
-    #         info = info.copy()
-    #         info['origin'] = info['origin'].copy()
-    #         info['parents'] = list(info['parents'])
-    #         info['parent_indices'] = list(info['parent_indices'])
-    #     info['parent_indices'].append( info['index'] )
-    #     info['level'] += 1
-    #     info['size'] *= 0.5
-    #     info['index'] = index
-    #     info['parents'].append(self)
-    #
-    #     half_size = info['size'] * 0.5
-    #     offset = []
-    #     for i, num in enumerate(self._TREE_CLS._BITWISE_NUMS):
-    #         offset.append( half_size if index&num else -half_size )
-    #
-    #     for i, component in enumerate(offset):
-    #         info['origin'][i] += component
-    #
-    #     return info
-
-    # TODO: yielding child_info is pointless here since info will be set to that in place
-    def iter_children_info(self, info):
+    The only permanent data for a node is the actual data of the node itself.
+    For example, leaf nodes in a World tree will only store their block id and
+    branch nodes store a list of child data.
+    """
+    def __init__(self, data, tree, parent, index):
         """
-        WARNING: If you exit the iterator prematurely then call `set_to_parent_info`.
-            Otherwise `info` will be set to the info for one of this node's children.
+        :param Any data: The data for this node.  This could be anything but
+            it's worth noting that a branch node is denoted by having its data
+            be a list of child data.
+        :param AbstractTree tree: The tree this node belongs to.
+        :type parent: TreeNode | None
+        :param int index: This node's index in its parent's list of children
         """
-        self.set_to_child_info(info, 0)
-        for index, child in enumerate(self._children):
-            info['index'] = index
-            yield (child, info)
-        self.set_to_parent_info(info)
+        self.index = index
+        self.parent = parent
+        self.tree = tree
+        self.data = data
 
-    def get_max_depth_node(self, info, point, max_depth):
-        if len(info['parents']) > max_depth:
-            return self, info
-        index = self.get_closest_child_index(info, point)
-        self.set_to_child_info(info, index)
-        try:
-            return self._children[index].get_max_depth_node(info, point, max_depth)
-        except AttributeError:  # child is None
-            if self._children[index] is not None:
-                raise
-            self.set_to_parent_info(info)
-            return self.generate_node(info, point, max_depth)
+        # Setup storage for cached values
+        self._size = None
+        self._origin = None
+        self._children = None
+        self._depth = None
 
-    def get_node(self, info, point):
-        index = self.get_closest_child_index(info, point)
-        self.set_to_child_info(info, index)
-        try:
-            return self._children[index].get_node(info, point)
-        except AttributeError:  # child is None
-            if self._children[index] is not None:
-                raise
-            self.set_to_parent_info(info)
-            return self.generate_node(info, point)
+    def is_leaf(self):
+        """ Return whether or not this node is a leaf node (i.e. has no children)
 
-    def generate_node(self, info, point, max_depth=None):
-        raise NotImplementedError
+        :rtype: bool
+        """
+        return not self.is_branch()
 
-    def get_size(self, info):
-        tree_size = info['tree']._size
-        return tree_size ** ( 1.0/float( len(info['parents'])+1 ) )
+    def is_branch(self):
+        """ Return whether or not this node is a branch node (i.e. has children).
 
-    def get_child_origin(self, size, origin, child_index):
-        result = origin.copy()
-        half_child_size = size * 0.25
-        for i, num in enumerate(self._TREE_CLS._BITWISE_NUMS):
-            if index & num:
-                result[i] += half_child_size
-            else:
-                result[i] -= half_child_size
+        Note that this check will not be accurate if the leaf node data type is a list.
 
-    def get_origin(self, info):
-        half_size = info['tree']._size * 0.5
-        result = Point()
-        for index in info['parent_indices'][1:]:
-            half_size *= 0.5
-            for i, num in enumerate(self._TREE_CLS._BITWISE_NUMS):
-                if index & num:
-                    result[i] += half_size
-                else:
-                    result[i] -= half_size
-        return result
+        :rtype: bool
+        """
+        return isinstance(self.data, list)
 
-    def get_closest_child_index(self, info, point):
+    def _cached__get_children(self):
+        """ Get a list of child nodes for this node
+
+        :rtype: tuple[TreeNode]
+        """
+        return self._children
+
+    def get_children(self):
+        """ Get a list of child nodes for this node
+
+        The result of this function will be cached so subsequent calls will be faster.
+
+        :rtype: tuple[TreeNode]
+        """
+        if self.is_leaf():
+            self._children = tuple()
+            self.get_children = self._cached__get_children
+        # some subclasses may add extra data to branch nodes so be sure to only get data from the actual child nodes
+        children_data = self.data[:self.tree.child_array_size]
+        create_node_proxy = self.tree._create_node_proxy
+        self._children = (
+            create_node_proxy(child_data, parent=self, index=child_index)
+            for child_index, child_data in enumerate(children_data)
+        )
+        self.get_children = self._cached__get_children
+        return self._children
+
+    def get_closest_child(self, point):
+        """ Return the child node closest to the provided point
+
+        :type point: Point
+
+        :rtype: TreeNode
+        """
         index = 0
-        # TODO: should probably cache this somehow so we don't have to rebuild it at every level
-        origin = self.get_origin(info)
-        for i,num in enumerate(self._TREE_CLS._BITWISE_NUMS):
-            if point[i] >= origin[i]: index |= num
+        origin = self.get_origin()
+        for i, num in enumerate(self.tree.BITWISE_NUMS):
+            if point[i] >= origin[i]:
+                index |= num
+        child_node = self.data[index]
+        return self.tree._create_node_proxy(child_node, parent=self, index=index)
 
-        return index
+    def _cached__get_depth(self):
+        """ Get the depth of this node in the tree
 
-class AbstractTreeLeaf(object):
-    _TREE_CLS = None
+        :rtype: int
+        """
+        return self._depth
 
-    def __init__(self, data=None):
-        self._data = data
+    def get_depth(self):
+        """ Get the depth of this node in the tree
 
-    def data(self):
-        return self._data
+        :rtype: int
+        """
+        try:
+            return self.parent.get_depth() + 1
+        except AttributeError:  # no parent so this must be the root node
+            assert self.parent is None
+            return 0
 
-    def set_data(self, data):
-        self._data = data
-        # TODO: possibly merge here
+    def _cached__get_size(self):
+        """ Return the cached size of this node.
 
-    def get_node(self, info, point):
-        return self, info
+        :rtype: float
+        """
+        return self._size
 
-    def get_max_depth_node(self, info, point, max_depth):
-        return self, info
+    def get_size(self):
+        """ Get the size of this node.
+
+        The result of this function will be cached so subsequent calls will be faster.
+
+        :rtype: float
+        """
+        try:
+            parent_size = self.parent.get_size()
+        except AttributeError:  # no parent so this must be the root node
+            assert self.parent is None
+            parent_size = self.tree.size
+        self._size = parent_size / 2.0
+        self.get_size = self._cached__get_size
+        return self._size
+
+    def _cached__get_origin(self):
+        """ Get the cached center point of this node
+
+        :rtype: Point
+        """
+        return self._origin
+
+    def get_origin(self):
+        """ Get the center point of this node
+
+        The result of this function will be cached so subsequent calls will be faster.
+
+        :rtype: Point
+        """
+        try:
+            origin = Point( *self.parent.get_origin() )
+        except AttributeError:  # no parent so this must be the root node
+            assert self.parent is None
+            origin = Point()
+        half_size = self.get_size() / 2.0
+        index = self.index
+        for i, num in enumerate(self.tree.BITWISE_NUMS):
+            if index & num:
+                origin[i] += half_size
+            else:
+                origin[i] -= half_size
+        self._origin = origin
+        self.get_origin = self._cached__get_origin
+        return self._origin
 
 class AbstractTree(object):
-    _LEAF_CLS = None
-    _BRANCH_CLS = None
-    _DIMENSIONS = None
-    _BITWISE_NUMS = None
+    DIMENSIONS = None  # Abstract
+    """:type: int"""
+
+    BITWISE_NUMS = None  # Abstract
+    """:type: tuple[int]"""
 
     def __init__(self, size, max_depth):
-        self._size = float(size)
-        self._max_depth = int(max_depth)
-        self._min_size = self._size / 2.0 ** self._max_depth
+        self.child_array_size = 2 ** self.DIMENSIONS
+        self.size = float(size)  # type: float
+        self.max_depth = int(max_depth)  # type: int
+        self.min_size = self.size / 2.0 ** self.max_depth  # type: float
         self._root = self._create_root()
 
     def _create_root(self):
-        return self._BRANCH_CLS()
+        """
+        :rtype: list
+        """
+        return [None] * self.child_array_size
 
-    def _get_info(self):
-        info = dict()
-        info['index'] = 0
-        info['parents'] = []
-        info['parent_indices'] = []
-        info['tree'] = self
-        return info
-
-    def origin(self):
+    def get_origin(self):
+        """
+        :rtype: Point
+        """
         return Point()
 
-    def size(self):
-        return self._size
-
-    def max_depth(self):
-        return self._max_depth
-
-    def min_size(self):
-        return self._min_size
+    def _create_node_proxy(self, data, parent=None, index=0):
+        """
+        :rtype: TreeNode
+        """
+        return TreeNode(data, tree=self, parent=parent, index=index)
 
     def get_node(self, point, max_depth=None):
-        half_size = self.size() / 2.0
-        for i in xrange(self._DIMENSIONS):
+        """
+        :rtype: TreeNode
+        """
+        half_size = self.size / 2.0
+        for i in xrange(self.DIMENSIONS):
             if abs(point[i]) > half_size:
-                return (None, None)
-        if max_depth is None:
-            return self._root.get_node(self._get_info(), point)
-        else:
-            return self._root.get_max_depth_node(self._get_info(), point, max_depth)
+                return None
 
-AbstractTreeBranch._TREE_CLS = AbstractTree
-AbstractTreeLeaf._TREE_CLS = AbstractTree
+        node = self._create_node_proxy(self._root)
+        depth = 0
+        while not node.is_leaf() and (max_depth is None or depth <= max_depth):
+            node = node.get_closest_child(point)
+            depth += 1
 
-AbstractTree._LEAF_CLS = AbstractTreeLeaf
-AbstractTree._BRANCH_CLS = AbstractTreeBranch
+        return node
 
