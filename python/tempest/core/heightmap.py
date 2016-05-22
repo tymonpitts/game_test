@@ -1,193 +1,11 @@
 import random
 
+from . import abstract_tree
 from . import quadtree
 from . import Point
 from . import BoundingBox2D
 
-class _HeightMapNodeMixin(object):
-    def _generate_debug_texture(self, info, viewport, width, height, texture):
-        """
-        :type info: dict
-        :type viewport: `BoundingBox2D`
-        :type width: int
-        :type height: int
-        :type texture: list[float]
-        """
-        # data range: -max_height to max_height
-        max_height = info['tree']._max_height
-        if self._data <= 0.0:
-            r = g = (max_height+self._data) / max_height * 0.5
-            b = 1.0
-        elif self._data > max_height:
-            r = g = b = 1.0
-        else:
-            r = self._data / max_height
-            g = (max_height - self._data) / max_height
-            b = 0.0
-
-        # TODO: update viewport._min reference once BoundingBox2D class has been refactored
-        half_size = self.get_size(info) / 2.0
-        origin = self.get_origin(info)
-        min_size = info['tree']._min_size
-        relative_bottom_left = (origin - Point(half_size, half_size)) - viewport._min
-        texture_index = (int(relative_bottom_left.y/min_size) * width) + int(relative_bottom_left.x/min_size)
-        texture_index *= 3
-        texture[texture_index] = r
-        texture[texture_index+1] = g
-        texture[texture_index+2] = b
-
 class _HeightMapBranch(quadtree._QuadTreeBranch, _HeightMapNodeMixin):
-    def __init__(self, data):
-        self._data = data
-        super(_HeightMapBranch, self).__init__()
-        self._children = self._children
-        """:type: list[None|`_HeightMapBranch`|`_HeightMapLeaf`]"""
-
-    def _generate_node_height(self, info, point, child_index, origin):
-        assert self._children[child_index] is None
-        # if child_index == 0:
-        #     return self._data
-
-        # find the items on this level that are adjacent to the new child item
-        #
-        """
-        Corner indices:
-            +y  2 3
-            -y  0 1
-               -x +x
-        """
-        half_tree_size = info['tree']._size / 2.0
-        size = self.get_size(info)
-        child_size = size / 2.0
-        corner_points = [
-            Point(*origin),
-            Point(*origin),
-            Point(*origin),
-            Point(*origin),
-        ]
-        corner_weights = [
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-        ]
-
-        if child_index & self._TREE_CLS._BITWISE_NUMS[0]:
-            """
-            Child is in one of these spots:
-                . x
-                . x
-            """
-            corner_points[1].x += size
-            corner_points[3].x += size
-            corner_weights[1] += 1.0
-            corner_weights[3] += 1.0
-
-            # TODO: change this once you implement world patches
-            if corner_points[1].x >= half_tree_size:  # wrap to other side
-                new_x = -half_tree_size + size
-                corner_points[1].x = new_x
-                corner_points[3].x = new_x
-        else:
-            """
-            Child is in one of these spots:
-                x .
-                x .
-            """
-            corner_points[0].x -= size
-            corner_points[2].x -= size
-            corner_weights[0] += 1.0
-            corner_weights[2] += 1.0
-
-            # TODO: change this once you implement world patches
-            if corner_points[0].x < -half_tree_size:  # wrap to other side
-                new_x = half_tree_size - size
-                corner_points[0].x = new_x
-                corner_points[2].x = new_x
-
-        if child_info['index'] & self._TREE_CLS._BITWISE_NUMS[1]:
-            """
-            Child is in one of these spots:
-                x x
-                . .
-            """
-            corner_points[2].y += size
-            corner_points[3].y += size
-            corner_weights[2] += 1.0
-            corner_weights[3] += 1.0
-
-            # TODO: change this once you implement world patches
-            if corner_points[2].y >= half_tree_size:  # wrap to other side
-                new_y = -half_tree_size + size
-                corner_points[2].y = new_y
-                corner_points[3].y = new_y
-        else:
-            """
-            Child is in one of these spots:
-                . .
-                x x
-            """
-            corner_points[0].y -= size
-            corner_points[1].y -= size
-            corner_weights[0] += 1.0
-            corner_weights[1] += 1.0
-
-            # TODO: change this once you implement world patches
-            if corner_points[0].y < -half_tree_size:  # wrap to other side
-                new_y = half_tree_size - size
-                corner_points[0].y = new_y
-                corner_points[1].y = new_y
-
-        # TODO: weighted average is producing horizontal and vertical lines in height
-        parent_height = 0.0
-        for i, corner_point in enumerate(corner_points):
-            if corner_point == origin:
-                corner_item = self
-            else:
-                # this should always return a proper item
-                depth = len(info['parents']) + 1
-                corner_item = info['tree'].get_node(corner_point, max_depth=depth)[0]
-            parent_height += corner_item._data * corner_weights[i]
-        parent_height /= sum(corner_weights)
-
-        child_origin = origin.copy()
-        half_child_size = child_size * 0.5
-        for i, num in enumerate(self._TREE_CLS._BITWISE_NUMS):
-            if child_index & num:
-                child_origin[i] += half_child_size
-            else:
-                child_origin[i] -= half_child_size
-
-        rand = random.Random( info['seed'] )
-        rand.jumpahead( (child_origin.x, child_origin.y) )  # jumpahead is expensive so only doing it once for both x and y
-
-        # max_deviation = 1.0 / float(info['level']**2)
-        # max_deviation = info['tree'].size() / 2**info['level']
-        max_deviation = info['tree']._max_height / 2**( (len(info['parents'])+1)**0.92)
-        deviation = rand.uniform(-max_deviation, max_deviation)
-        return parent_height + deviation
-
-    # TODO: should probably use child info here...
-    def generate_node(self, info, point, max_depth=None):
-        if max_depth is not None and len(info['parents']) >= max_depth:
-            return self, info
-
-        origin = self.get_origin(info)
-        if origin.x == point.x and origin.y == point.y:
-            return self, info
-
-        child_index = self.get_closest_child_index(info, point)
-        height = self._generate_node_height(info, point, child_index, origin)
-        child_depth = len(info['parents']) + 1
-        self.set_to_child_info(info, child_index)
-        if child_depth >= info['tree']._max_depth:
-            cls = self._TREE_CLS._LEAF_CLS
-            self._children[index] = cls(height)
-            return self._children[index], info
-        else:
-            cls = self._TREE_CLS._BRANCH_CLS
-            self._children[index] = cls(height)
-            return self._children[index].generate_node(info, point, max_depth)
 
     def get_points(self, info):
         points = []
@@ -372,22 +190,214 @@ class _HeightMapLeaf(quadtree._QuadTreeLeaf, _HeightMapNodeMixin):
         indices = [i + info['index_offset'] for i in info['cube'].INDICES]
         return verts, normals, indices
 
+class HeightMapNode(abstract_tree.TreeNode):
+    def get_height(self):
+        if self.is_branch():
+            return self.data[4]
+        else:
+            return self.data
+
+    def _generate_debug_texture(self, viewport, width, height, texture):
+        """
+        :type viewport: `BoundingBox2D`
+        :type width: int
+        :type height: int
+        :type texture: list[float]
+        """
+        # data range: -max_height to max_height
+        max_height = self.tree.max_height
+        height = self.get_height()
+        if height <= 0.0:
+            r = g = (max_height + height) / max_height * 0.5
+            b = 1.0
+        elif height > max_height:
+            r = g = b = 1.0
+        else:
+            r = height / max_height
+            g = (max_height - height) / max_height
+            b = 0.0
+
+        half_size = self.get_size() / 2.0
+        origin = self.get_origin()
+        min_size = self.tree.min_size
+        # TODO: update viewport._min reference once BoundingBox2D class has been refactored
+        relative_bottom_left = (origin - Point(half_size, half_size)) - viewport._min
+        texture_index = (int(relative_bottom_left.y / min_size) * width) + int(relative_bottom_left.x / min_size)
+        texture_index *= 3
+        texture[texture_index] = r
+        texture[texture_index + 1] = g
+        texture[texture_index + 2] = b
+
+    def generate_data(self):
+        height = self._generate_height()
+
+    def _generate_height(self):
+        # find the items at the parent depth that are adjacent to this node
+        #
+        """
+        Corner indices:
+            +y  2 3
+            -y  0 1
+               -x +x
+        """
+        half_tree_size = self.tree.size / 2.0
+        parent_size = self.parent.get_size()
+        size = parent_size / 2.0
+        origin = self.parent.get_origin()
+        corner_points = [
+            Point(*origin),
+            Point(*origin),
+            Point(*origin),
+            Point(*origin),
+        ]
+        corner_weights = [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+        ]
+
+        if self.index & self.tree.BITWISE_NUMS[0]:
+            """
+            Child is in one of these spots:
+                . x
+                . x
+            """
+            corner_points[1].x += parent_size
+            corner_points[3].x += parent_size
+            corner_weights[1] += 1.0
+            corner_weights[3] += 1.0
+
+            # TODO: change this once you implement world patches
+            if corner_points[1].x >= half_tree_size:  # wrap to other side
+                new_x = -half_tree_size + parent_size
+                corner_points[1].x = new_x
+                corner_points[3].x = new_x
+        else:
+            """
+            Child is in one of these spots:
+                x .
+                x .
+            """
+            corner_points[0].x -= parent_size
+            corner_points[2].x -= parent_size
+            corner_weights[0] += 1.0
+            corner_weights[2] += 1.0
+
+            # TODO: change this once you implement world patches
+            if corner_points[0].x < -half_tree_size:  # wrap to other side
+                new_x = half_tree_size - parent_size
+                corner_points[0].x = new_x
+                corner_points[2].x = new_x
+
+        if child_info['index'] & self._TREE_CLS._BITWISE_NUMS[1]:
+            """
+            Child is in one of these spots:
+                x x
+                . .
+            """
+            corner_points[2].y += parent_size
+            corner_points[3].y += parent_size
+            corner_weights[2] += 1.0
+            corner_weights[3] += 1.0
+
+            # TODO: change this once you implement world patches
+            if corner_points[2].y >= half_tree_size:  # wrap to other side
+                new_y = -half_tree_size + parent_size
+                corner_points[2].y = new_y
+                corner_points[3].y = new_y
+        else:
+            """
+            Child is in one of these spots:
+                . .
+                x x
+            """
+            corner_points[0].y -= parent_size
+            corner_points[1].y -= parent_size
+            corner_weights[0] += 1.0
+            corner_weights[1] += 1.0
+
+            # TODO: change this once you implement world patches
+            if corner_points[0].y < -half_tree_size:  # wrap to other side
+                new_y = half_tree_size - parent_size
+                corner_points[0].y = new_y
+                corner_points[1].y = new_y
+
+        # TODO: weighted average is producing horizontal and vertical lines in height
+        parent_height = 0.0
+        for i, corner_point in enumerate(corner_points):
+            if corner_point == origin:
+                corner_item = self
+            else:
+                # this should always return a proper item
+                depth = len(info['parents']) + 1
+                corner_item = info['tree'].get_node(corner_point, max_depth=depth)[0]
+            parent_height += corner_item._data * corner_weights[i]
+        parent_height /= sum(corner_weights)
+
+        child_origin = origin.copy()
+        half_child_size = size * 0.5
+        for i, num in enumerate(self._TREE_CLS._BITWISE_NUMS):
+            if child_index & num:
+                child_origin[i] += half_child_size
+            else:
+                child_origin[i] -= half_child_size
+
+        rand = random.Random( info['seed'] )
+        rand.jumpahead( (child_origin.x, child_origin.y) )  # jumpahead is expensive so only doing it once for both x and y
+
+        # max_deviation = 1.0 / float(info['level']**2)
+        # max_deviation = info['tree'].size() / 2**info['level']
+        max_deviation = info['tree']._max_height / 2**( (len(info['parents'])+1)**0.92)
+        deviation = rand.uniform(-max_deviation, max_deviation)
+        return parent_height + deviation
+
 class HeightMap(quadtree.QuadTree):
+    """
+
+    Data format:
+
+    - Branches: list with length 5.  First 4 items are children data, last item
+        is the height of the branch node
+    - Leaves: height of the node
+    """
     def __init__(self, size, max_height, max_depth, seed, base_height=0.0):
-        self._seed = seed
-        self._max_height = max_height
-        self._base_height = base_height
-        self._points = None
+        self.seed = seed
+        self.max_height = max_height
+        self.base_height = base_height
         super(HeightMap, self).__init__(size, max_depth)
 
-    def generate(self, point):
+    def _create_node_proxy(self, data, parent=None, index=0):
+        """
+        :rtype: TreeNode
+        """
+        return HeightMapNode(data, tree=self, parent=parent, index=index)
+
+    def generate(self, point, max_depth=None):
         """Generates nodes centered around `point`.
 
         Falloff is based on size*depth
 
         :type point: `Point`
         """
-        self._root.generate(self._get_info(), point)
+        nodes = [self._create_node_proxy(self._root)]
+        """:type: list[HeightMapNode]"""
+        depth = 0
+        size = self.size
+        while nodes and (max_depth is None or depth <= max_depth):
+            next_nodes = []
+            """:type: list[HeightMapNode]"""
+            max_distance = size * (depth + 1)
+            for node in nodes:
+                distance = point.distance( node.get_origin() )
+                if distance <= max_distance:
+                    if node.data is None:
+                        node.generate_data()
+                    next_nodes.extend( node.get_children() )
+                # TODO: maybe unload children in an else statement here?
+            nodes = next_nodes
+            depth += 1
+            size /= 2.0
 
     def generate_area(self, bbox):
         """Generates all nodes within the provided `bbox`.
@@ -397,14 +407,9 @@ class HeightMap(quadtree.QuadTree):
         self._root.generate_area(self._get_info(), bbox)
 
     def _create_root(self):
-        root = self._BRANCH_CLS( self._base_height )
-        root._children = [self._BRANCH_CLS( self._base_height ) for i in xrange(4)]
+        root = super(HeightMap, self)._create_root()
+        root.append(self.base_height)
         return root
-
-    def _get_info(self):
-        info = super(HeightMap, self)._get_info()
-        info['seed'] = self._seed
-        return info
 
 _HeightMapBranch._TREE_CLS = HeightMap
 _HeightMapLeaf._TREE_CLS = HeightMap
