@@ -193,9 +193,9 @@ class _HeightMapLeaf(quadtree._QuadTreeLeaf, _HeightMapNodeMixin):
 class HeightMapNode(abstract_tree.TreeNode):
     def get_height(self):
         if self.is_branch():
-            return self.data[4]
+            return self._data[4]
         else:
-            return self.data
+            return self._data
 
     def _generate_debug_texture(self, viewport, width, height, texture):
         """
@@ -391,7 +391,7 @@ class HeightMap(quadtree.QuadTree):
             for node in nodes:
                 distance = point.distance( node.get_origin() )
                 if distance <= max_distance:
-                    if node.data is None:
+                    if node._data is None:
                         node.generate_data()
                     next_nodes.extend( node.get_children() )
                 # TODO: maybe unload children in an else statement here?

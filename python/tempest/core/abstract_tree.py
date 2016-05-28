@@ -23,13 +23,26 @@ class TreeNode(object):
         self.index = index
         self.parent = parent
         self.tree = tree
-        self.data = data
+        self._data = data
 
         # Setup storage for cached values
         self._size = None
         self._origin = None
         self._children = None
         self._depth = None
+
+    def _set_data(self, value):
+        """ Set the data for this node ensuring that the parent node's child
+        list is updated appropriately
+
+        :param Any value: The new data value
+        """
+        self._data = value
+        try:
+            self.parent._data[self.index] = self._data
+        except AttributeError:  # parent is None
+            assert self.parent is None
+            pass
 
     def is_leaf(self):
         """ Return whether or not this node is a leaf node (i.e. has no children)
@@ -45,7 +58,7 @@ class TreeNode(object):
 
         :rtype: bool
         """
-        return isinstance(self.data, list)
+        return isinstance(self._data, list)
 
     def _cached__get_children(self):
         """ Get a list of child nodes for this node
@@ -65,7 +78,7 @@ class TreeNode(object):
             self._children = tuple()
             self.get_children = self._cached__get_children
         # some subclasses may add extra data to branch nodes so be sure to only get data from the actual child nodes
-        children_data = self.data[:self.tree.child_array_size]
+        children_data = self._data[:self.tree.child_array_size]
         create_node_proxy = self.tree._create_node_proxy
         self._children = (
             create_node_proxy(child_data, parent=self, index=child_index)
@@ -86,7 +99,7 @@ class TreeNode(object):
         for i, num in enumerate(self.tree.BITWISE_NUMS):
             if point[i] >= origin[i]:
                 index |= num
-        child_node = self.data[index]
+        child_node = self._data[index]
         return self.tree._create_node_proxy(child_node, parent=self, index=index)
 
     def _cached__get_depth(self):
