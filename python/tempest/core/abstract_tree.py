@@ -77,6 +77,7 @@ class TreeNode(object):
         if self.is_leaf():
             self._children = tuple()
             self.get_children = self._cached__get_children
+            return self._children
         # some subclasses may add extra data to branch nodes so be sure to only get data from the actual child nodes
         children_data = self._data[:self.tree.child_array_size]
         create_node_proxy = self.tree._create_node_proxy
