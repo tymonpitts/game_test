@@ -206,7 +206,12 @@ class AbstractTree(object):
         return TreeNode(data, tree=self, parent=parent, index=index)
 
     def get_node(self, point, max_depth=None):
-        """
+        """ Get the leaf node that contains the provided point
+
+        :param Point point: get the leaf node that contains this point
+        :param int max_depth: The maximum depth to traverse.  If this depth is
+            reached before finding a leaf node then the branch node is returned.
+
         :rtype: TreeNode
         """
         half_size = self.size / 2.0
