@@ -116,10 +116,12 @@ class TreeNode(object):
         :rtype: int
         """
         try:
-            return self.parent.get_depth() + 1
+            self._depth = self.parent.get_depth() + 1
         except AttributeError:  # no parent so this must be the root node
             assert self.parent is None
-            return 0
+            self._depth = 0
+        self.get_depth = self._cached__get_depth
+        return self._depth
 
     def _cached__get_size(self):
         """ Return the cached size of this node.
