@@ -1,3 +1,4 @@
+from . import decorators
 from . import Point
 
 __all__ = ['AbstractTree', 'TreeNode']
@@ -11,6 +12,8 @@ class TreeNode(object):
     For example, leaf nodes in a World tree will only store their block id and
     branch nodes store a list of child data.
     """
+    __metaclass__ = decorators.EnableCachedMethods
+
     def __init__(self, data, tree, parent, index):
         """
         :param Any data: The data for this node.  This could be anything but
@@ -24,12 +27,6 @@ class TreeNode(object):
         self.parent = parent
         self.tree = tree
         self._data = data
-
-        # Setup storage for cached values
-        self._size = None
-        self._origin = None
-        self._children = None
-        self._depth = None
 
     def _set_data(self, value):
         """ Set the data for this node ensuring that the parent node's child
@@ -60,13 +57,7 @@ class TreeNode(object):
         """
         return isinstance(self._data, list)
 
-    def _cached__get_children(self):
-        """ Get a list of child nodes for this node
-
-        :rtype: tuple[TreeNode]
-        """
-        return self._children
-
+    @decorators.cached_method
     def get_children(self):
         """ Get a list of child nodes for this node
 
@@ -75,18 +66,15 @@ class TreeNode(object):
         :rtype: tuple[TreeNode]
         """
         if self.is_leaf():
-            self._children = tuple()
-            self.get_children = self._cached__get_children
-            return self._children
+            return tuple()
+
         # some subclasses may add extra data to branch nodes so be sure to only get data from the actual child nodes
         children_data = self._data[:self.tree.child_array_size]
         create_node_proxy = self.tree._create_node_proxy
-        self._children = (
+        return (
             create_node_proxy(child_data, parent=self, index=child_index)
             for child_index, child_data in enumerate(children_data)
         )
-        self.get_children = self._cached__get_children
-        return self._children
 
     def get_closest_child(self, point):
         """ Return the child node closest to the provided point
@@ -103,33 +91,21 @@ class TreeNode(object):
         child_node = self._data[index]
         return self.tree._create_node_proxy(child_node, parent=self, index=index)
 
-    def _cached__get_depth(self):
-        """ Get the depth of this node in the tree
-
-        :rtype: int
-        """
-        return self._depth
-
+    @decorators.cached_method
     def get_depth(self):
         """ Get the depth of this node in the tree
+
+        The result of this function will be cached so subsequent calls will be faster.
 
         :rtype: int
         """
         try:
-            self._depth = self.parent.get_depth() + 1
+            return self.parent.get_depth() + 1
         except AttributeError:  # no parent so this must be the root node
             assert self.parent is None
-            self._depth = 0
-        self.get_depth = self._cached__get_depth
-        return self._depth
+            return 0
 
-    def _cached__get_size(self):
-        """ Return the cached size of this node.
-
-        :rtype: float
-        """
-        return self._size
-
+    @decorators.cached_method
     def get_size(self):
         """ Get the size of this node.
 
@@ -142,17 +118,9 @@ class TreeNode(object):
         except AttributeError:  # no parent so this must be the root node
             assert self.parent is None
             parent_size = self.tree.size
-        self._size = parent_size / 2.0
-        self.get_size = self._cached__get_size
-        return self._size
+        return parent_size / 2.0
 
-    def _cached__get_origin(self):
-        """ Get the cached center point of this node
-
-        :rtype: Point
-        """
-        return self._origin
-
+    @decorators.cached_method
     def get_origin(self):
         """ Get the center point of this node
 
@@ -161,20 +129,18 @@ class TreeNode(object):
         :rtype: Point
         """
         try:
-            origin = Point( *self.parent.get_origin() )
+            result = Point( *self.parent.get_origin() )
         except AttributeError:  # no parent so this must be the root node
             assert self.parent is None
-            origin = Point()
+            result = Point()
         half_size = self.get_size() / 2.0
         index = self.index
         for i, num in enumerate(self.tree.BITWISE_NUMS):
             if index & num:
-                origin[i] += half_size
+                result[i] += half_size
             else:
-                origin[i] -= half_size
-        self._origin = origin
-        self.get_origin = self._cached__get_origin
-        return self._origin
+                result[i] -= half_size
+        return result
 
 class AbstractTree(object):
     DIMENSIONS = None  # Abstract
