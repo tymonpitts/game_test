@@ -10,19 +10,19 @@ class EnableCachedMethods(type):
     The created method will be called by the decorator at runtime.
     See the docs for `cached_method` for more info.
     """
-    def __new__(cls, name, bases, dict):
-        for obj_name, obj in dict.items():
+    def __new__(cls, name, bases, cls_dict):
+        for obj_name, obj in cls_dict.items():
             if not inspect.isfunction(obj):
                 continue
             if not getattr(obj, 'cached_method', False):
                 continue
 
             code = inspect.cleandoc('''
-                def _cached__%s(self):
-                    return self.%s
-            ''') % (obj_name, obj.cache_variable_name)
-            exec code in dict
-        return type.__new__(cls, name, bases, dict)
+                def _cached__%(func_name)s(self):
+                    return self.%(cache_variable_name)s
+            ''') % dict(func_name=obj_name, cache_variable_name=obj.cache_variable_name)
+            exec code in cls_dict
+        return type.__new__(cls, name, bases, cls_dict)
 
 def cached_method(cache_variable_name):  # type: types.FunctionType
     """ This is a function decorator that, when used in conjunction with the
@@ -57,10 +57,10 @@ def cached_method(cache_variable_name):  # type: types.FunctionType
         code = inspect.cleandoc('''
             @functools.wraps(func)
             def wrapped(self):
-                self.%s = func(self)
-                self.%s = self._cached__%s
-                return self.%s
-        ''') % (cache_variable_name, func.__name__, func.__name__, cache_variable_name)
+                self.%(cache_variable_name)s = func(self)
+                self.%(func_name)s = self._cached__%(func_name)s
+                return self.%(cache_variable_name)s
+        ''') % dict(cache_variable_name=cache_variable_name, func_name=func.__name__)
         wrapped_func_container = {
             'functools': functools,
             'func': func,
