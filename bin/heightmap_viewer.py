@@ -102,9 +102,9 @@ class HeightMapViewer(core.AbstractWindow):
 
     def generate_texture(self, width, height):
         data = [1.0, 0.0, 0.0] * (width * height)
-        half_viewport_size = core.Point(width/2*self.heightmap.min_size(), height/2*self.heightmap.min_size())
-        viewport = core.BoundingBox2D(self.center-half_viewport_size, self.center+half_viewport_size)
-        self.heightmap._root._generate_debug_texture(self.heightmap._get_info(), viewport, width, height, data)
+        half_viewport_size = core.Point(width / 2.0 * self.heightmap.min_size, height / 2.0 * self.heightmap.min_size)
+        viewport = core.BoundingBox2D(self.center - half_viewport_size, self.center + half_viewport_size)
+        self.heightmap._generate_debug_texture(viewport, width, height, data)
 
         if self.texture_quad_vao is None:
             self.create_texture_vao()
@@ -151,8 +151,8 @@ class HeightMapViewer(core.AbstractWindow):
         with Timer('HeightMap.generate()', log=True):
             # self.heightmap._generate_all_nodes()
             self.heightmap.generate( core.Point() )
-            # half_viewport_size = core.Point(self.initial_width/2*self.heightmap.min_size(), self.initial_height/2*self.heightmap.min_size())
-            # viewport = core.BoundingBox2D(self.center-half_viewport_size, self.center+half_viewport_size)
+            # half_viewport_size = core.Point(self.initial_width / 2.0 * self.heightmap.min_size, self.initial_height / 2 * self.heightmap.min_size)
+            # viewport = core.BoundingBox2D(self.center - half_viewport_size, self.center + half_viewport_size)
             # self.heightmap.generate_area(viewport)
         with Timer('generate texture', log=True):
             self.generate_texture(self.initial_width, self.initial_height)
