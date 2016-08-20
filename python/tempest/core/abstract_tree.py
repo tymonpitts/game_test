@@ -217,8 +217,6 @@ class AbstractTree(object):
                 return True
             elif node.is_leaf():
                 return True
-            elif max_depth is not None and depth >= max_depth:
-                return True
             else:
                 return False
 
@@ -229,7 +227,10 @@ class AbstractTree(object):
 
         node = self._create_node_proxy(self._root)
         depth = 0
-        while not node_matches():
+        max_depth = max_depth if max_depth is not None else self.max_depth
+        while depth < max_depth:
+            if node_matches():
+                return node
             node = node.get_closest_child(point)
             depth += 1
 
