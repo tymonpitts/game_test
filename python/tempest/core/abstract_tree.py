@@ -71,13 +71,16 @@ class TreeNode(object):
         # some subclasses may add extra data to branch nodes so be sure to only get data from the actual child nodes
         children_data = self._data[:self.tree.child_array_size]
         create_node_proxy = self.tree._create_node_proxy
-        return (
+        return tuple(
             create_node_proxy(child_data, parent=self, index=child_index)
             for child_index, child_data in enumerate(children_data)
         )
 
     def get_closest_child(self, point):
         """ Return the child node closest to the provided point
+
+        .. warning:: This does NOT do any error checking for leaf nodes.
+            It is up to the caller do perform these checks.
 
         :type point: Point
 
@@ -88,8 +91,7 @@ class TreeNode(object):
         for i, num in enumerate(self.tree.BITWISE_NUMS):
             if point[i] >= origin[i]:
                 index |= num
-        child_node = self._data[index]
-        return self.tree._create_node_proxy(child_node, parent=self, index=index)
+        return self.get_children()[index]
 
     @decorators.cached_method
     def get_depth(self):
@@ -117,7 +119,7 @@ class TreeNode(object):
             parent_size = self.parent.get_size()
         except AttributeError:  # no parent so this must be the root node
             assert self.parent is None
-            parent_size = self.tree.size
+            return self.tree.size
         return parent_size / 2.0
 
     @decorators.cached_method
@@ -132,7 +134,7 @@ class TreeNode(object):
             result = Point( *self.parent.get_origin() )
         except AttributeError:  # no parent so this must be the root node
             assert self.parent is None
-            result = Point()
+            return Point()
         half_size = self.get_size() / 2.0
         index = self.index
         for i, num in enumerate(self.tree.BITWISE_NUMS):
@@ -162,12 +164,6 @@ class AbstractTree(object):
         """
         return [None] * self.child_array_size
 
-    def get_origin(self):
-        """
-        :rtype: Point
-        """
-        return Point()
-
     def _create_node_proxy(self, data, parent=None, index=0):
         """
         :rtype: TreeNode
@@ -183,6 +179,16 @@ class AbstractTree(object):
 
         :rtype: TreeNode
         """
+        def node_matches():
+            if node.get_origin() == point:
+                return True
+            elif node.is_leaf():
+                return True
+            elif max_depth is not None and depth >= max_depth:
+                return True
+            else:
+                return False
+
         half_size = self.size / 2.0
         for i in xrange(self.DIMENSIONS):
             if abs(point[i]) > half_size:
@@ -190,7 +196,7 @@ class AbstractTree(object):
 
         node = self._create_node_proxy(self._root)
         depth = 0
-        while not node.is_leaf() and (max_depth is None or depth <= max_depth):
+        while not node_matches():
             node = node.get_closest_child(point)
             depth += 1
 
