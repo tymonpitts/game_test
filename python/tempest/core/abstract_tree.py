@@ -1,3 +1,5 @@
+from typing import List, Tuple, Union
+
 from . import decorators
 from . import Point
 
@@ -16,12 +18,14 @@ class TreeNode(object):
 
     def __init__(self, data, tree, parent, index):
         """
-        :param Any data: The data for this node.  This could be anything but
-            it's worth noting that a branch node is denoted by having its data
-            be a list of child data.
-        :param AbstractTree tree: The tree this node belongs to.
-        :type parent: TreeNode | None
-        :param int index: This node's index in its parent's list of children
+
+        Args:
+            data (Any): The data for this node.  This could be anything but
+                it's worth noting that a branch node is denoted by having its
+                data be a list of child data.
+            tree (AbstractTree): The tree this node belongs to.
+            parent (Union[TreeNode, None]):
+            index (int): This node's index in its parent's list of children
         """
         self.index = index
         self.parent = parent
@@ -32,7 +36,8 @@ class TreeNode(object):
         """ Set the data for this node ensuring that the parent node's child
         list is updated appropriately
 
-        :param Any value: The new data value
+        Args:
+            value (Any): The new data value
         """
         self._data = value
         try:
@@ -44,7 +49,8 @@ class TreeNode(object):
     def is_leaf(self):
         """ Return whether or not this node is a leaf node (i.e. has no children)
 
-        :rtype: bool
+        Returns:
+            bool
         """
         return not self.is_branch()
 
@@ -53,7 +59,8 @@ class TreeNode(object):
 
         Note that this check will not be accurate if the leaf node data type is a list.
 
-        :rtype: bool
+        Returns:
+            bool
         """
         return isinstance(self._data, list)
 
@@ -63,7 +70,8 @@ class TreeNode(object):
 
         The result of this function will be cached so subsequent calls will be faster.
 
-        :rtype: tuple[TreeNode]
+        Returns:
+            Tuple[TreeNode]
         """
         if self.is_leaf():
             return tuple()
@@ -82,9 +90,11 @@ class TreeNode(object):
         .. warning:: This does NOT do any error checking for leaf nodes.
             It is up to the caller do perform these checks.
 
-        :type point: Point
+        Args:
+            point (Point)
 
-        :rtype: TreeNode
+        Returns:
+            TreeNode
         """
         index = 0
         origin = self.get_origin()
@@ -99,7 +109,8 @@ class TreeNode(object):
 
         The result of this function will be cached so subsequent calls will be faster.
 
-        :rtype: int
+        Returns:
+            int
         """
         try:
             return self.parent.get_depth() + 1
@@ -113,7 +124,8 @@ class TreeNode(object):
 
         The result of this function will be cached so subsequent calls will be faster.
 
-        :rtype: float
+        Returns:
+            float
         """
         try:
             parent_size = self.parent.get_size()
@@ -128,7 +140,8 @@ class TreeNode(object):
 
         The result of this function will be cached so subsequent calls will be faster.
 
-        :rtype: Point
+        Returns:
+            Point
         """
         try:
             result = Point( *self.parent.get_origin() )
@@ -145,39 +158,59 @@ class TreeNode(object):
         return result
 
 class AbstractTree(object):
-    DIMENSIONS = None  # Abstract
-    """:type: int"""
+    """ Base class for all spacial tree structures (e.g. QuadTree, Octree, etc...)
 
-    BITWISE_NUMS = None  # Abstract
-    """:type: tuple[int]"""
+    Attributes:
+        child_array_size (int): The number of children the tree can have.
+            This attribute is read only.
+        size (int): The spacial size of the tree
+            This attribute is read only.
+        max_depth (int): The maximum allowed depth of the tree
+            This attribute is read only.
+        min_size (float): The minimum allowed size of a node within the tree.
+            This attribute is read only.
+    """
+    # Abstract: must be reimplemented in base classes
+    # This defines how many dimensions the tree has
+    DIMENSIONS = None  # type: int
+
+    # Abstract: must be reimplemented in base classes
+    # This defines how child indexes are determined and should contain an
+    # entry for every dimension.
+    BITWISE_NUMS = None  # type: Tuple[int]
 
     def __init__(self, size, max_depth):
         self.child_array_size = 2 ** self.DIMENSIONS
-        self.size = float(size)  # type: float
-        self.max_depth = int(max_depth)  # type: int
-        self.min_size = self.size / 2.0 ** self.max_depth  # type: float
+        self.size = float(size)
+        self.max_depth = int(max_depth)
+        self.min_size = self.size / 2.0 ** self.max_depth
         self._root = self._create_root()
 
     def _create_root(self):
         """
-        :rtype: list
+        Returns:
+            List[None]
         """
         return [None] * self.child_array_size
 
     def _create_node_proxy(self, data, parent=None, index=0):
         """
-        :rtype: TreeNode
+        Returns:
+            TreeNode
         """
         return TreeNode(data, tree=self, parent=parent, index=index)
 
     def get_node(self, point, max_depth=None):
         """ Get the leaf node that contains the provided point
 
-        :param Point point: get the leaf node that contains this point
-        :param int max_depth: The maximum depth to traverse.  If this depth is
-            reached before finding a leaf node then the branch node is returned.
+        Args:
+            point (Point): get the leaf node that contains this point
+            max_depth (int): The maximum depth to traverse.  If this depth is
+                reached before finding a leaf node then the branch node is
+                returned.
 
-        :rtype: TreeNode
+        Returns:
+            TreeNode
         """
         def node_matches():
             if node.get_origin() == point:
