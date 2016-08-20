@@ -32,6 +32,23 @@ class TreeNode(object):
         self.tree = tree
         self._data = data
 
+    def __str__(self):
+        if self.is_leaf():
+            return '%s(type="leaf", depth=%s, index=%s, origin=%s, data=%s)' % (self.__class__.__name__, self.get_depth(), self.index, self.get_origin(), self._data)
+        else:
+            return '%s(type="branch", depth=%s, index=%s, origin=%s)' % (self.__class__.__name__, self.get_depth(), self.index, self.get_origin())
+
+    def refresh_data(self):
+        """ Refresh the stored data on this node with the actual data stored in the tree
+        """
+        try:
+            self.parent.refresh_data()
+        except AttributeError:
+            assert self.parent is None
+            self._data = self.tree._root
+        else:
+            self._data = self.parent._data[self.index]
+
     def _set_data(self, value):
         """ Set the data for this node ensuring that the parent node's child
         list is updated appropriately
