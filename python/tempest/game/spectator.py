@@ -3,13 +3,13 @@
 #================================================================= IMPORTS ==#
 import glfw
 
-from .. import core
+import game_core
 from . import Game
 
 
 #============================================================================#
 #=================================================================== CLASS ==#
-class Spectator(core.AbstractCamera):
+class Spectator(game_core.AbstractCamera):
     def __init__(self, position=None):
         super(Spectator, self).__init__(position)
         self.acceleration_rate = 1.0
@@ -31,7 +31,7 @@ class Spectator(core.AbstractCamera):
 
         # add movement
         #
-        translate = core.Vector()
+        translate = game_core.Vector()
         if 'W' in Game.INSTANCE.pressed_keys:
             translate.z += self.acceleration_rate
         if 'S' in Game.INSTANCE.pressed_keys:

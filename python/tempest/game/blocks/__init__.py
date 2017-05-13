@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from ... import core
+import game_core
 
 
 _BLOCKS = []
@@ -82,17 +82,17 @@ class AbstractBlock(object):
 
     def bbox(self):
         half_size = self.size() * 0.5
-        offset = core.Vector(half_size, half_size, half_size)
+        offset = game_core.Vector(half_size, half_size, half_size)
         min_ = self._origin - offset
         max_ = self._origin + offset
-        return core.BoundingBox(min_, max_)
+        return game_core.BoundingBox(min_, max_)
 
     def solve_collision(self, start_bbox, acceleration=None):
         # calculate a bounding box that encompasses the start/end bounding boxes
         #
         if acceleration:
             end_bbox = start_bbox.translate(acceleration)
-            bbox = core.BoundingBox()
+            bbox = game_core.BoundingBox()
             bbox.bbox_expand(start_bbox)
             bbox.bbox_expand(end_bbox)
         else:

@@ -10,8 +10,8 @@ Time for 1000 accesses: 0.294078111649
 
 """
 import time
-from tempest.core.octree import Octree, _OctreeBranch
-from tempest.core import Point
+from game_core.octree import Octree, _OctreeBranch
+from game_core import Point
 
 # fill tree to 16 levels
 #
@@ -45,8 +45,8 @@ print 'Time for %s accesses: %s' % (num, t)
 
 # import random
 # import time
-# from tempest.core import Octree
-# from tempest.core import Point
+# from game_core import Octree
+# from game_core import Point
 #
 # # fill tree to 16 levels
 # #

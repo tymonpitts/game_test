@@ -3,12 +3,12 @@
 
 from OpenGL import GL
 
-from .. import core
+import game_core
 from . import Game
 
 #============================================================================#
 #=================================================================== CLASS ==#
-class Player(core.AbstractCamera):
+class Player(game_core.AbstractCamera):
     def __init__(self, position):
         super(Player, self).__init__(position)
         self.mass = 65.0 # kilograms
@@ -17,18 +17,18 @@ class Player(core.AbstractCamera):
         # self.height = 1.75
         # self.width = 0.5
         # self.depth = 0.25
-        self.bbox = core.BoundingBox([-0.25, 0.0, -0.25], [0.25, 1.75, 0.25])
+        self.bbox = game_core.BoundingBox([-0.25, 0.0, -0.25], [0.25, 1.75, 0.25])
 
         self.max_walking_speed = 3.0 # meters per second
         self.walking_force = self.mass * 2.0  # F = mass * acceleration (meters per second per second)
         self.jump_force = self.mass * 60.0 # F = mass * acceleration; average human a=30.0
 
-        self.velocity = core.Vector()
+        self.velocity = game_core.Vector()
         self._grounded = True
 
     def render(self):
         bbox = self._get_bbox_at_pos(self._pos)
-        mat = core.Matrix()
+        mat = game_core.Matrix()
         center = bbox.center()
         for i in xrange(3):
             mat[i,i] = bbox.get_dimension(i)
@@ -40,7 +40,7 @@ class Player(core.AbstractCamera):
             Game.INSTANCE.cube.render()
 
     def camera_matrix(self):
-        offset = core.Matrix()
+        offset = game_core.Matrix()
         offset.rotateX(45.0)
         offset[3,1]=5.0
         offset[3,2]=-5.0
@@ -90,7 +90,7 @@ class Player(core.AbstractCamera):
             #
             bbox1 = self._get_bbox_at_pos(start_pos)
             bbox2 = self._get_bbox_at_pos(start_pos + velocity)
-            bbox = core.BoundingBox()
+            bbox = game_core.BoundingBox()
             bbox.bbox_expand(bbox1)
             bbox.bbox_expand(bbox2)
             blocks = Game.INSTANCE.world.get_blocks(bbox)
@@ -148,13 +148,13 @@ class Player(core.AbstractCamera):
         if start_pos is None:
             start_pos = self._pos
         if velocity is None:
-            velocity = core.Vector()
+            velocity = game_core.Vector()
 
         bbox1 = self._get_bbox_at_pos(start_pos)
         if blocks is None:
             pos2 = start_pos + velocity
             bbox2 = self._get_bbox_at_pos(pos2)
-            bbox = core.BoundingBox()
+            bbox = game_core.BoundingBox()
             bbox.bbox_expand(bbox1)
             bbox.bbox_expand(bbox2)
             blocks = Game.INSTANCE.world.get_blocks(bbox)
@@ -188,7 +188,7 @@ class Player(core.AbstractCamera):
         # else:
         #     max_frictional_force = kinetic_friction_coefficient * friction_normal_force
 
-        force = core.Vector()
+        force = game_core.Vector()
         if 'W' in Game.INSTANCE.pressed_keys:
             force.z += 1.0
         if 'S' in Game.INSTANCE.pressed_keys:
@@ -218,7 +218,7 @@ class Player(core.AbstractCamera):
         return (force / self.mass)
 
     def _get_acceleration_in_air(self, ry):
-        force = core.Vector()
+        force = game_core.Vector()
         if 'W' in Game.INSTANCE.pressed_keys:
             force.z += 1.0
         if 'S' in Game.INSTANCE.pressed_keys:

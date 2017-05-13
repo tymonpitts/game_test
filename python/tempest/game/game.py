@@ -4,10 +4,10 @@ import glfw
 from OpenGL import GL
 
 from .. import data
-from .. import core
+import game_core
 from .. import shaders
 
-class Game(core.AbstractWindow):
+class Game(game_core.AbstractWindow):
     INSTANCE = None
     """:type: `Game`"""
 
@@ -18,7 +18,7 @@ class Game(core.AbstractWindow):
         self.cube = None
 
         self.shaders = None
-        """:type: dict[str, `core.ShaderProgram`]"""
+        """:type: dict[str, `game_core.ShaderProgram`]"""
 
         self.player = None
         self.world = None
@@ -28,7 +28,7 @@ class Game(core.AbstractWindow):
         super(Game, self).init()
         glfw.Disable(glfw.MOUSE_CURSOR)
 
-        self.cube = core.Mesh(data.cube.VERTICES, data.cube.NORMALS, data.cube.INDICES, data.cube.DRAW_METHOD)
+        self.cube = game_core.Mesh(data.cube.VERTICES, data.cube.NORMALS, data.cube.INDICES, data.cube.DRAW_METHOD)
         self.shaders = shaders.init()
         self.register_blocks()
 
@@ -84,14 +84,14 @@ class Game(core.AbstractWindow):
                 GL.glUniformMatrix4fv(shader.uniforms['worldToCameraMatrix'], 1, GL.GL_FALSE, i_cam_mat.tolist())
 
         with self.shaders['skin'] as shader:
-            light_dir = core.Vector(0.1, 1.0, 0.5)
+            light_dir = game_core.Vector(0.1, 1.0, 0.5)
             light_dir.normalize()
             GL.glUniform4fv(shader.uniforms['dirToLight'], 1, list(light_dir))
 
         # # draw scene origin cubes
         # #
         # with self.shaders['skin'] as shader:
-        #     mat = core.Matrix()
+        #     mat = game_core.Matrix()
         #     mat.scale(0.1)
         #     GL.glUniformMatrix4fv(
         #             shader.uniforms['modelToWorldMatrix'],
@@ -101,7 +101,7 @@ class Game(core.AbstractWindow):
         #     GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
         #     self.cube.render()
         #
-        #     mat = core.Matrix()
+        #     mat = game_core.Matrix()
         #     mat.scale(0.1)
         #     mat.translate([1,0,0])
         #     GL.glUniformMatrix4fv(
@@ -112,7 +112,7 @@ class Game(core.AbstractWindow):
         #     GL.glUniform4f(shader.uniforms['diffuseColor'], 1.0, 0.0, 0.0, 1.0)
         #     self.cube.render()
         #
-        #     mat = core.Matrix()
+        #     mat = game_core.Matrix()
         #     mat.scale(0.1)
         #     mat.translate([0,1,0])
         #     GL.glUniformMatrix4fv(
@@ -123,7 +123,7 @@ class Game(core.AbstractWindow):
         #     GL.glUniform4f(shader.uniforms['diffuseColor'], 0.0, 1.0, 0.0, 1.0)
         #     self.cube.render()
         #
-        #     mat = core.Matrix()
+        #     mat = game_core.Matrix()
         #     mat.scale(0.1)
         #     mat.translate([0,0,1])
         #     GL.glUniformMatrix4fv(

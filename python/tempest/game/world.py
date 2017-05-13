@@ -7,8 +7,8 @@ import numpy
 from OpenGL import GL
 
 from ..data import cube
-from .. import core
-from ..core import octree
+import game_core
+from game_core import octree
 from . import blocks
 from . import Game
 
@@ -71,10 +71,10 @@ class AbstractWorldOctreeBase(object):
     @staticmethod
     def _get_bbox(info):
         half_size = info['size'] * 0.5
-        offset = core.Vector(half_size, half_size, half_size)
+        offset = game_core.Vector(half_size, half_size, half_size)
         min_ = info['origin'] - offset
         max_ = info['origin'] + offset
-        return core.BoundingBox(min_, max_)
+        return game_core.BoundingBox(min_, max_)
 
     def _get_height(self, info, x, z):
         raise NotImplementedError
@@ -302,7 +302,7 @@ class _WorldOctreeLeaf(AbstractWorldOctreeBase, octree._OctreeLeaf):
     #     # if info['origin'][1] != 13.5:
     #     #     return
 
-    #     mat = core.Matrix()
+    #     mat = game_core.Matrix()
     #     mat[0,0] = mat[1,1] = mat[2,2] = info['size']
     #     mat[3,0] = info['origin'][0]
     #     mat[3,1] = info['origin'][1]
@@ -342,7 +342,7 @@ class _WorldOctreeLeaf(AbstractWorldOctreeBase, octree._OctreeLeaf):
         # stime = time.time()
         verts = []
         for i in xrange(0, len(cube_verts), 3):
-            # vert = origin + core.Vector([cube_verts[i], cube_verts[i+1], cube_verts[i+2]]) * size
+            # vert = origin + game_core.Vector([cube_verts[i], cube_verts[i+1], cube_verts[i+2]]) * size
             # verts.append(vert.x)
             # verts.append(vert.y)
             # verts.append(vert.z)
@@ -531,7 +531,7 @@ class World(octree.Octree):
                 indices += [i + index_offset for i in cube.INDICES]
                 index_offset += len(cube_verts)/3
 
-        self._debug_mesh = core.Mesh(verts, normals, indices, GL.GL_TRIANGLES)
+        self._debug_mesh = game_core.Mesh(verts, normals, indices, GL.GL_TRIANGLES)
 
     def _generate_mesh(self):
         info = self._get_info()
@@ -539,7 +539,7 @@ class World(octree.Octree):
         info['index_offset'] = 0
         verts, normals, indices = self._root._generate_mesh(info)
         # stime = time.time()
-        self.mesh = core.Mesh(verts, normals, indices, GL.GL_TRIANGLES)
+        self.mesh = game_core.Mesh(verts, normals, indices, GL.GL_TRIANGLES)
         # self._mesh_times['creating_mesh'] = time.time() - stime
 
     def _init_from_height_map(self, values):
@@ -551,7 +551,7 @@ class World(octree.Octree):
                     shader.uniforms['modelToWorldMatrix'], 
                     1, 
                     GL.GL_FALSE, 
-                    core.Matrix().tolist())
+                    game_core.Matrix().tolist())
             GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 1.0, 0.5, 1.0)
             self.mesh.render()
 

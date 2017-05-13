@@ -3,11 +3,11 @@ import glfw
 from OpenGL import GL
 
 from tempest import data
-from tempest import core
+import game_core
 from tempest import shaders
-from tempest.core.utils.timer import Timer
+from game_core.utils.timer import Timer
 
-class HeightMapViewer(core.AbstractWindow):
+class HeightMapViewer(game_core.AbstractWindow):
     INSTANCE = None
     """:type: `HeightMapViewer`"""
 
@@ -16,10 +16,10 @@ class HeightMapViewer(core.AbstractWindow):
         self.title = 'HeightMap Viewer'
 
         self.shaders = None
-        """:type: dict[str, `core.ShaderProgram`]"""
+        """:type: dict[str, `game_core.ShaderProgram`]"""
 
         self.heightmap = None
-        """:type: `core.HeightMap`"""
+        """:type: `game_core.HeightMap`"""
 
         self.texture_quad_vao = None
         """:type: int"""
@@ -28,14 +28,14 @@ class HeightMapViewer(core.AbstractWindow):
         """:type: list[int]"""
 
         self.initialized = False
-        self.center = core.Point()
+        self.center = game_core.Point()
 
     # def _generate_debug_mesh(self):
     #     info = self.heightmap._get_info()
     #     info['cube'] = data.cube
     #     info['index_offset'] = 0
     #     verts, normals, indices = self.heightmap._root._generate_debug_mesh(info)
-    #     self.mesh = core.Mesh(verts, normals, indices, GL.GL_TRIANGLES)
+    #     self.mesh = game_core.Mesh(verts, normals, indices, GL.GL_TRIANGLES)
 
     def create_texture_vao(self):
         verts = [
@@ -62,7 +62,7 @@ class HeightMapViewer(core.AbstractWindow):
         array_type = (GL.GLfloat*len(verts))
         GL.glBufferData(
             GL.GL_ARRAY_BUFFER,
-            len(verts)*core.FLOAT_SIZE,
+            len(verts) * game_core.FLOAT_SIZE,
             array_type(*verts),
             GL.GL_STATIC_DRAW
         )
@@ -84,7 +84,7 @@ class HeightMapViewer(core.AbstractWindow):
         array_type = (GL.GLfloat*len(uvs))
         GL.glBufferData(
             GL.GL_ARRAY_BUFFER,
-            len(uvs)*core.FLOAT_SIZE,
+            len(uvs) * game_core.FLOAT_SIZE,
             array_type(*uvs),
             GL.GL_STATIC_DRAW
         )
@@ -102,8 +102,8 @@ class HeightMapViewer(core.AbstractWindow):
 
     def generate_texture(self, width, height):
         data = [1.0, 0.0, 0.0] * (width * height)
-        half_viewport_size = core.Point(width / 2.0 * self.heightmap.min_size, height / 2.0 * self.heightmap.min_size)
-        viewport = core.BoundingBox2D(self.center - half_viewport_size, self.center + half_viewport_size)
+        half_viewport_size = game_core.Point(width / 2.0 * self.heightmap.min_size, height / 2.0 * self.heightmap.min_size)
+        viewport = game_core.BoundingBox2D(self.center - half_viewport_size, self.center + half_viewport_size)
         self.heightmap._generate_debug_texture(viewport, width, height, data)
 
         if self.texture_quad_vao is None:
@@ -137,12 +137,12 @@ class HeightMapViewer(core.AbstractWindow):
 
         self.shaders = shaders.init()
 
-        # self.heightmap = core.HeightMap(size=16, max_height=4.0, max_depth=4, seed=1121327837)
-        # self.heightmap = core.HeightMap(size=256, max_height=128.0, max_depth=8, seed=1121327837)
-        self.heightmap = core.HeightMap(size=512, max_height=256.0, max_depth=9, seed=1121327837)
-        # self.heightmap = core.HeightMap(size=2097152.0, max_height=8850.0, max_depth=23, seed=1121327837)
-        # self.heightmap = core.HeightMap(size=2097152.0, max_height=100.0, max_depth=23, seed=1121327837)
-        # self.heightmap = core.HeightMap(size=16384.0, max_height=100.0, max_depth=16, seed=1121327837)
+        # self.heightmap = game_core.HeightMap(size=16, max_height=4.0, max_depth=4, seed=1121327837)
+        # self.heightmap = game_core.HeightMap(size=256, max_height=128.0, max_depth=8, seed=1121327837)
+        self.heightmap = game_core.HeightMap(size=512, max_height=256.0, max_depth=9, seed=1121327837)
+        # self.heightmap = game_core.HeightMap(size=2097152.0, max_height=8850.0, max_depth=23, seed=1121327837)
+        # self.heightmap = game_core.HeightMap(size=2097152.0, max_height=100.0, max_depth=23, seed=1121327837)
+        # self.heightmap = game_core.HeightMap(size=16384.0, max_height=100.0, max_depth=16, seed=1121327837)
 
         # import cProfile
         # cProfile.run('from tempest.game import Game; Game.INSTANCE.world._generate_all_nodes()')
@@ -150,9 +150,9 @@ class HeightMapViewer(core.AbstractWindow):
         # sys.exit(0)
         with Timer('HeightMap.generate()', log=True):
             # self.heightmap._generate_all_nodes()
-            self.heightmap.generate( core.Point() )
-            # half_viewport_size = core.Point(self.initial_width / 2.0 * self.heightmap.min_size, self.initial_height / 2 * self.heightmap.min_size)
-            # viewport = core.BoundingBox2D(self.center - half_viewport_size, self.center + half_viewport_size)
+            self.heightmap.generate(game_core.Point())
+            # half_viewport_size = game_core.Point(self.initial_width / 2.0 * self.heightmap.min_size, self.initial_height / 2 * self.heightmap.min_size)
+            # viewport = game_core.BoundingBox2D(self.center - half_viewport_size, self.center + half_viewport_size)
             # self.heightmap.generate_area(viewport)
         with Timer('generate texture', log=True):
             self.generate_texture(self.initial_width, self.initial_height)
@@ -176,7 +176,7 @@ class HeightMapViewer(core.AbstractWindow):
             x, y = glfw.GetMousePos()  # integer positions relative to the upper left corner of the window
             x = x - (width / 2)
             y = (height / 2) - y
-            self.heightmap.generate( core.Point(x, y) )
+            self.heightmap.generate(game_core.Point(x, y))
             self.generate_texture(width, height)
 
     def reshape(self, w, h):

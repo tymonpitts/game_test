@@ -1,5 +1,5 @@
 import pytest
-from tempest.core import decorators
+from game_core import decorators
 
 def test_cached_method():
     # assert that the cached_method decorator errors if the decorated method has arguments
