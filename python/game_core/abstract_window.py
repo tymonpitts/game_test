@@ -86,7 +86,9 @@ class AbstractWindow(object):
     def reshape(self, w, h):
         GL.glViewport(0, 0, w, h)
 
-    def run(self):
+    @classmethod
+    def run(cls):
+        self = cls()
         self.init()
 
         t = 0.0
