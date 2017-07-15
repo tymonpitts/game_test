@@ -1,11 +1,8 @@
 __all__ = ['AbstractVector']
 
-#============================================================================#
-#================================================================= IMPORTS ==#
 import numpy
 
-#============================================================================#
-#=================================================================== CLASS ==#
+
 class AbstractVector(object):
     def __init__(self, x=0.0, y=0.0, z=0.0):
         self._data = [float(x), float(y), float(z)]
@@ -60,7 +57,7 @@ class AbstractVector(object):
         self._data[index] = float(value)
 
     def __neg__(self):
-        return (self * -1.0)
+        return self * -1.0
 
     def __add__(self, other):
         result = self.copy()
@@ -90,6 +87,7 @@ class AbstractVector(object):
         result *= other
         return result
 
+    # noinspection PyProtectedMember
     def __imul__(self, other):
         from . import Matrix
         if isinstance(other, Matrix):
@@ -112,7 +110,12 @@ class AbstractVector(object):
     def __idiv__(self, other):
         from . import Matrix
         if isinstance(other, Matrix):
-            raise TypeError('unsupported operand type(s) for /: \'%s\' and \'%s\'' % (type(self), type(other)))
+            raise TypeError(
+                "unsupported operand type(s) for /: '{}' and '{}'".format(
+                    type(self),
+                    type(other),
+                )
+            )
         elif hasattr(other, '__iter__'):
             for i in xrange(3):
                 self._data[i] /= other[i]
@@ -129,6 +132,7 @@ class AbstractVector(object):
             yield item
 
     def __eq__(self, other):
+        # noinspection PyBroadException
         try:
             for i in xrange(len(self)):
                 if self[i] != other[i]:
@@ -138,9 +142,8 @@ class AbstractVector(object):
             return False
 
     def __ne__(self, other):
-        return (not self.__eq__(other))
+        return not self.__eq__(other)
 
     def round(self, decimals=6):
         for i in xrange(len(self)):
             self._data[i] = round(self._data[i], decimals)
-
