@@ -133,7 +133,7 @@ class HeightMapViewer(game_core.AbstractWindow):
 
     def init(self):
         super(HeightMapViewer, self).init()
-        # glfw.Disable(glfw.MOUSE_CURSOR)
+        # glfw.set_input_mode(self.window, glfw.CURSOR, False)
 
         self.shaders = shaders.init()
 
@@ -165,15 +165,16 @@ class HeightMapViewer(game_core.AbstractWindow):
         # y = self.heightmap.get_height(x,z)
         # self.player = Player(self, [x, y, z])
 
-    def mouse_button_event(self, button, action):
+    def mouse_button_event(self, button, action, mods):
         """Called when a mouse button is pressed or released
 
         :param int button: The pressed/released mouse button
-        :param int action: GLFW_PRESS or GLFW_RELEASE
+        :param int action: glfw.PRESS or glfw.RELEASE
+        :param int mods: Bit field describing which modifier keys were held down.
         """
-        if button == glfw.MOUSE_BUTTON_LEFT and action == glfw.GLFW_PRESS:
-            width, height = glfw.GetWindowSize()
-            x, y = glfw.GetMousePos()  # integer positions relative to the upper left corner of the window
+        if button == glfw.MOUSE_BUTTON_LEFT and action == glfw.PRESS:
+            width, height = glfw.get_framebuffer_size(self.window)
+            x, y = glfw.get_cursor_pos(self.window)  # integer positions relative to the upper left corner of the window
             x = x - (width / 2)
             y = (height / 2) - y
             self.heightmap.generate(game_core.Point(x, y))

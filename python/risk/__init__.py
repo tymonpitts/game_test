@@ -15,7 +15,7 @@ class Risk(game_core.AbstractWindow):
 
     def init(self):
         super(Risk, self).init()
-        glfw.Disable(glfw.MOUSE_CURSOR)
+        glfw.set_input_mode(self.window, glfw.CURSOR, False)
 
         self.shaders = shaders.init()
 

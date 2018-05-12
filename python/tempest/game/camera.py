@@ -61,7 +61,7 @@ class Camera(object):
             trans.x -= self.movement_speed
         if ' ' in pressed_keys:
             trans.y += self.movement_speed
-        if glfw.KEY_LSHIFT in pressed_keys:
+        if glfw.KEY_LEFT_SHIFT in pressed_keys:
             trans.y -= self.movement_speed
 
         # convert mouse_move to rotation matrices

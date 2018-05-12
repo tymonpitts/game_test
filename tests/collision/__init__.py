@@ -28,7 +28,7 @@ class Camera(core.AbstractCamera):
             trans.x -= self.movement_speed
         if ' ' in game.pressed_keys:
             trans.y += self.movement_speed
-        if glfw.KEY_LSHIFT in game.pressed_keys:
+        if glfw.KEY_LEFT_SHIFT in game.pressed_keys:
             trans.y -= self.movement_speed
 
         # convert mouse movement into rotation matrices
@@ -85,7 +85,7 @@ class Collider(object):
             trans.x -= 1.0
         if ' ' in game.pressed_keys:
             trans.y += 1.0
-        if glfw.KEY_LSHIFT in game.pressed_keys:
+        if glfw.KEY_LEFT_SHIFT in game.pressed_keys:
             trans.y -= 1.0
         trans.normalize()
         trans *= 0.1

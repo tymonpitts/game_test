@@ -26,7 +26,7 @@ class Game(game_core.AbstractWindow):
 
     def init(self):
         super(Game, self).init()
-        glfw.Disable(glfw.MOUSE_CURSOR)
+        glfw.set_input_mode(self.window, glfw.CURSOR, False)
 
         self.cube = game_core.Mesh(data.cube.VERTICES, data.cube.NORMALS, data.cube.INDICES, data.cube.DRAW_METHOD)
         self.shaders = shaders.init()
@@ -58,17 +58,18 @@ class Game(game_core.AbstractWindow):
             current_id = next_id
             print '    registered states: %s' % num_ids
 
+    # noinspection PyShadowingBuiltins
     def get_block_cls(self, id):
         return self.block_ids_to_cls[id]
 
     def retrieve_mouse_data(self):
-        window_size = glfw.GetWindowSize()
+        window_size = glfw.get_framebuffer_size(self.window)
         window_center = [window_size[0] / 2, window_size[1] / 2]
 
-        mouse_pos = [float(p - window_center[i]) / window_center[i] for i,p in enumerate(glfw.GetMousePos())]
+        mouse_pos = [float(p - window_center[i]) / window_center[i] for i, p in enumerate(glfw.get_cursor_pos(self.window))]
         self.mouse_movement = (mouse_pos[0], mouse_pos[1])
 
-        glfw.SetMousePos(*window_center)
+        glfw.set_cursor_pos(self.window, *window_center)
 
     def integrate(self, t, delta_time):
         self.retrieve_mouse_data()
@@ -141,7 +142,7 @@ class Game(game_core.AbstractWindow):
         super(Game, self).reshape(w, h)
 
         window_center = [w / 2, h / 2]
-        glfw.SetMousePos(*window_center)
+        glfw.set_cursor_pos(self.window, *window_center)
 
         self.player.reshape(w, h)
 

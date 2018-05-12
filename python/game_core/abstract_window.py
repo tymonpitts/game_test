@@ -11,6 +11,7 @@ class AbstractWindow(object):
 
     def __init__(self):
         self.title = 'AbstractWindow'
+        self.window = None  # type: int
         self.initial_width = 512
         self.initial_height = 512
         self.mouse_movement = (0.0, 0.0)
@@ -18,24 +19,26 @@ class AbstractWindow(object):
         self.INSTANCE = self
 
     def init(self):
-        glfw.Init()
+        if not glfw.init():
+            raise Exception('glfw failed to initialize')
 
-        glfw.OpenWindowHint(glfw.OPENGL_VERSION_MAJOR, 3)
-        glfw.OpenWindowHint(glfw.OPENGL_VERSION_MINOR, 2)
-        glfw.OpenWindowHint(glfw.OPENGL_FORWARD_COMPAT, GL.GL_TRUE)
-        glfw.OpenWindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
+        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 2)
+        glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, GL.GL_TRUE)
+        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 
-        glfw.OpenWindow(
+        self.window = glfw.create_window(
             self.initial_width, self.initial_height,
-            8, 8, 8,
-            8, 24, 0,
-            glfw.WINDOW
+            self.title, None, None
         )
+        if not self.window:
+            glfw.terminate()
+            raise Exception('glfw failed to create a window')
 
-        glfw.SetWindowTitle(self.title)
-        glfw.SetWindowSizeCallback(self.reshape)
-        glfw.SetKeyCallback(self.keyboard_event)
-        glfw.SetMouseButtonCallback(self.mouse_button_event)
+        glfw.make_context_current(self.window)
+        glfw.set_framebuffer_size_callback(self.window, self._reshape_callback)
+        glfw.set_key_callback(self.window, self._key_callback)
+        glfw.set_mouse_button_callback(self.window, self._mouse_button_callback)
 
         GL.glEnable(GL.GL_CULL_FACE)
         GL.glCullFace(GL.GL_BACK)
@@ -56,22 +59,44 @@ class AbstractWindow(object):
     def post_integration(self):
         pass
 
-    def keyboard_event(self, key, press):
-        if key == glfw.KEY_ESC:
-            glfw.Terminate()
+    def _reshape_callback(self, window, w, h):
+        # type: (glfw._GLFWwindow, int, int) -> None
+        self.reshape(w, h)
+
+    def _key_callback(self, window, key, scancode, action, mods):
+        # type: (glfw._GLFWwindow, int, int, int, int) -> None
+        self.keyboard_event(key, scancode, action, mods)
+
+    def _mouse_button_callback(self, window, button, action, mods):
+        # type: (glfw._GLFWwindow, int, int, int) -> None
+        self.mouse_button_event(button, action, mods)
+
+    def keyboard_event(self, key, scancode, action, mods):
+        """
+        Args:
+            key (int): The keyboard key that was pressed or released.
+            scancode (int): The system-specific scancode of the key.
+            action (int): glfw.PRESS, glfw.RELEASE or glfw.REPEAT.
+            mods (int): Bit field describing which modifier keys were held down.
+        """
+        if key == glfw.KEY_ESCAPE:
+            print 'Escape pressed...'
+            glfw.set_window_should_close(self.window, True)
             return
 
         # TODO: possibly use glfwSetInputMode here instead
-        if press:
+        if action in (glfw.PRESS, glfw.REPEAT):
             self.pressed_keys.add(key)
         else:
             self.pressed_keys.remove(key)
 
-    def mouse_button_event(self, button, action):
+    def mouse_button_event(self, button, action, mods):
         """Called when a mouse button is pressed or released
 
-        :param int button: The pressed/released mouse button
-        :param int action: GLFW_PRESS or GLFW_RELEASE
+        Args:
+            button (int): The pressed/released mouse button
+            action (int): glfw.PRESS or glfw.RELEASE
+            mods (int): Bit field describing which modifier keys were held down.
         """
         pass
 
@@ -95,8 +120,8 @@ class AbstractWindow(object):
         current_time = time.time()
         delta_time = 1.0 / 60.0
         accumulator = 0.0
-        while glfw.GetWindowParam(glfw.OPENED):
-            try:
+        try:
+            while not glfw.window_should_close(self.window):
                 # get elapsed time
                 #
                 new_time = time.time()
@@ -120,7 +145,10 @@ class AbstractWindow(object):
                 #
                 self.clear()
                 self.draw()
-                glfw.SwapBuffers()
-            except:
-                glfw.Terminate()
-                raise
+                glfw.swap_buffers(self.window)
+                glfw.poll_events()
+        except KeyboardInterrupt:
+            print 'KeyboardInterrupt...'
+        finally:
+            print('Exiting...')
+            glfw.terminate()

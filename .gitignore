@@ -4,3 +4,4 @@ TODO
 *.sublime-workspace
 .idea
 .cache
+venv/*

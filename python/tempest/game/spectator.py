@@ -42,7 +42,7 @@ class Spectator(game_core.AbstractCamera):
             translate.x -= self.acceleration_rate
         if ' ' in Game.INSTANCE.pressed_keys:
             translate.y += self.acceleration_rate
-        if glfw.KEY_LSHIFT in Game.INSTANCE.pressed_keys:
+        if glfw.KEY_LEFT_SHIFT in Game.INSTANCE.pressed_keys:
             translate.y -= self.acceleration_rate
         translate *= delta_time
         translate *= ry
