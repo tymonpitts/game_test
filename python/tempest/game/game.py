@@ -2,27 +2,30 @@ import random
 
 import glfw
 from OpenGL import GL
+from typing import Dict, List, Type, TYPE_CHECKING
 
 from .. import data
 import game_core
 from .. import shaders
 
+if TYPE_CHECKING:
+    from .spectator import Spectator
+    from .world import World
+    from .blocks import AbstractBlock
+
+
 class Game(game_core.AbstractWindow):
-    INSTANCE = None
-    """:type: `Game`"""
+    INSTANCE = None  # type: Game
 
     def __init__(self):
         super(Game, self).__init__()
         self.title = 'Tempest'
 
-        self.cube = None
-
-        self.shaders = None
-        """:type: dict[str, `game_core.ShaderProgram`]"""
-
-        self.player = None
-        self.world = None
-        self.block_ids_to_cls = []
+        self.cube = None  # type: game_core.Mesh
+        self.shaders = None  # type: Dict[str, game_core.ShaderProgram]
+        self.player = None  # type: Spectator
+        self.world = None  # type: World
+        self.block_ids_to_cls = []  # type: List[Type[AbstractBlock]]
 
     def init(self):
         super(Game, self).init()
@@ -156,4 +159,3 @@ class Game(game_core.AbstractWindow):
                     GL.GL_FALSE,
                     self.player.projection_matrix.tolist(),
                 )
-
