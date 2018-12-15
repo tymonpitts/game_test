@@ -2,6 +2,7 @@ FLOAT_SIZE = 4
 SHORT_SIZE = 2
 
 from .abstract_window import AbstractWindow
+from .abstract_tree import *
 
 from .quaternion import Quaternion
 from .matrix import Matrix, MatrixStack

@@ -3,7 +3,7 @@ import math
 from OpenGL import GL
 
 
-VERTICES = [
+VERTICES = (
     #
     #        7      4
     #                     ^
@@ -21,12 +21,12 @@ VERTICES = [
      0.5, -0.5, -0.5,
     -0.5, -0.5, -0.5,
     -0.5,  0.5, -0.5,
-]
+)
 
 # normalized side for 45 degree normal
 normalized_45 = math.sqrt(pow(0.5, 2) * 3)
 
-NORMALS = [
+NORMALS = (
      normalized_45,  normalized_45,  normalized_45,
      normalized_45, -normalized_45,  normalized_45,
     -normalized_45, -normalized_45,  normalized_45,
@@ -35,9 +35,9 @@ NORMALS = [
      normalized_45, -normalized_45, -normalized_45,
     -normalized_45, -normalized_45, -normalized_45,
     -normalized_45,  normalized_45, -normalized_45,
-]
+)
 DRAW_METHOD = GL.GL_TRIANGLES
-INDICES = [
+INDICES = (
     # FRONT FACE
     0, 1, 2,
     2, 3, 0,
@@ -61,4 +61,4 @@ INDICES = [
     # LEFT FACE
     2, 6, 3,
     3, 6, 7,
-]
+)

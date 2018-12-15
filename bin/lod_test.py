@@ -1,7 +1,7 @@
 #! /usr/bin/python
 import glfw
 from OpenGL import GL
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import game_core
 from tempest.data.lod_transition_proof_of_concept import smooth_cube
@@ -147,38 +147,64 @@ class Window(game_core.AbstractWindow):
             GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
             self.cube.render()
 
-class TransitionVertex(game_core.Point3):
-    def __init__(self, pos, pos_vector, normal, normal_vector):
-        self.pos = pos
-        self.pos_vector = pos_vector
-        self.normal = normal
-        self.normal_vector = normal_vector
 
-class Item(...):
-    def __init__(self):
-        self.vertices = [
-            TransitionVertex(...),
-            TransitionVertex(...),
-            TransitionVertex(...),
-            TransitionVertex(...),
-            TransitionVertex(...),
-            TransitionVertex(...),
-            TransitionVertex(...),
-            TransitionVertex(...),
-        ]
-        self.faces = ...
-        
+class TransitionVertex(object):
+    def __init__(self, pos, normal, pos_vector=None, normal_vector=None):
+        # type: (game_core.Point, game_core.Vector, game_core.Vector, game_core.Vector) -> None
+        self.pos = pos
+        self.pos_vector = pos_vector or game_core.Vector()
+        self.normal = normal
+        self.normal_vector = normal_vector or game_core.Vector()
+
+
+class LodTestItem(game_core.TreeNode):
+
+    def __init__(self, data, tree, parent, index):
+        """
+        Args:
+            data (Any): The data for this node.  This could be anything but
+                it's worth noting that a branch node is denoted by having its
+                data be a list of child data.
+            tree (AbstractTree): The tree this node belongs to.
+            parent (Union[TreeNode, None]):
+            index (int): This node's index in its parent's list of children
+        """
+        # TODO: store verts/faces in tree data
+        super(LodTestItem, self).__init__(data, tree, parent, index)
+        self.vertices = None  # type: Optional[Tuple[TransitionVertex]]
+        self.faces = None  # type: Optional[Tuple[int]]
+
     def init_vertices(self):
-        if not self.children:
-            ...
+        # no data so clear vert/face lists and exit
+        if not self._data:
+            self.vertices = None
+            self.faces = None
             return
-        for i, child in enumerate(self.children):
+
+        # initialize vert/face lists with default values
+        self.vertices = tuple(
+            TransitionVertex(
+                pos=game_core.Point(*smooth_cube.VERTICES[i]),
+                normal=game_core.Vector(*smooth_cube.NORMALS[i]),
+            )
+            for i in range(8)
+        )
+        self.faces = smooth_cube.INDICES
+
+        # if we're a leaf node then early exit. Transition vectors will be
+        # computed when initializing parent verts
+        if self.is_leaf():
+            return
+
+        # we're a branch. initialize verts based on children
+        children = self.get_children()
+        for i, child in enumerate(children):
             if child:
                 self.vertices[i].pos = child.vertices[i].pos
                 self.vertices[i].normal = child.vertices[i].normal
             else:
-                for neighbor in Octree.NEIGHBORS[i]:
-                    child = self.children[neighbor]
+                for neighbor in self.tree.NEIGHBORS[i]:
+                    child = children[neighbor]
                     if child:
                         self.vertices[i].pos = child.vertices[i].pos
                         self.vertices[i].normal = child.vertices[i].normal
@@ -186,14 +212,27 @@ class Item(...):
                 else:
                     self.vertices[i].pos = self.get_origin()
                     self.vertices[i].normal = ...
-        for i, child in enumerate(self.children):
+
+        # update transition vectors for children's verts
+        for i, child in enumerate(children):
             if not child:
                 continue
             for j, vertex in enumerate(child.vertices):
                 if i == j:
                     continue
                 # TODO: might need some work
-                
+                ...
+
+
+class LodTestTree(game_core.Octree):
+
+    def _create_node_proxy(self, data, parent=None, index=0):
+        """
+        Returns:
+            TreeNode
+        """
+        return LodTestItem(data, tree=self, parent=parent, index=index)
+
 
 def generate_scenarios():
     import inspect
