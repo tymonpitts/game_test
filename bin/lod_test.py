@@ -59,6 +59,7 @@ class Window(game_core.AbstractWindow):
         super(Window, self).__init__()
         self.title = 'Window'
         self.cube = None  # type: game_core.Mesh
+        
         self.shaders = None  # type: Dict[str, game_core.ShaderProgram]
         self.camera = None  # type: Camera
 
@@ -146,6 +147,53 @@ class Window(game_core.AbstractWindow):
             GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
             self.cube.render()
 
+class TransitionVertex(game_core.Point3):
+    def __init__(self, pos, pos_vector, normal, normal_vector):
+        self.pos = pos
+        self.pos_vector = pos_vector
+        self.normal = normal
+        self.normal_vector = normal_vector
+
+class Item(...):
+    def __init__(self):
+        self.vertices = [
+            TransitionVertex(...),
+            TransitionVertex(...),
+            TransitionVertex(...),
+            TransitionVertex(...),
+            TransitionVertex(...),
+            TransitionVertex(...),
+            TransitionVertex(...),
+            TransitionVertex(...),
+        ]
+        self.faces = ...
+        
+    def init_vertices(self):
+        if not self.children:
+            ...
+            return
+        for i, child in enumerate(self.children):
+            if child:
+                self.vertices[i].pos = child.vertices[i].pos
+                self.vertices[i].normal = child.vertices[i].normal
+            else:
+                for neighbor in Octree.NEIGHBORS[i]:
+                    child = self.children[neighbor]
+                    if child:
+                        self.vertices[i].pos = child.vertices[i].pos
+                        self.vertices[i].normal = child.vertices[i].normal
+                        break
+                else:
+                    self.vertices[i].pos = self.get_origin()
+                    self.vertices[i].normal = ...
+        for i, child in enumerate(self.children):
+            if not child:
+                continue
+            for j, vertex in enumerate(child.vertices):
+                if i == j:
+                    continue
+                # TODO: might need some work
+                
 
 def generate_scenarios():
     import inspect
