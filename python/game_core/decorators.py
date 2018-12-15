@@ -2,6 +2,7 @@ import functools
 import types
 import inspect
 
+
 class EnableCachedMethods(type):
     """ This is a metaclass that, when used in conjunction with the
     `cached_method` function decorator, will create a method that just returns
@@ -28,7 +29,9 @@ class EnableCachedMethods(type):
         cls._add_cached_method(cls_dict)
         return type.__new__(cls, name, bases, cls_dict)
 
-def cached_method(func):  # type: types.FunctionType
+
+def cached_method(func):
+    # type: (types.FunctionType) -> types.FunctionType
     """ This is a function decorator that, when used in conjunction with the
     `EnableCachedMethods` metaclass, sets up caching on a method so that
     subsequent calls to it will be faster.
@@ -40,7 +43,6 @@ def cached_method(func):  # type: types.FunctionType
         types.FunctionType
     """
     # assert that the function has the required argspec
-    #
     argspec = inspect.getargspec(func)
     assert len(argspec.args) == 1 and argspec.args[0] == 'self', 'Invalid arg spec for decorated function.  Expected no arguments.'
 
@@ -65,7 +67,6 @@ def cached_method(func):  # type: types.FunctionType
     # Add some attributes to the wrapped function created above.
     # These attributes are required by the `EnableCachedMethods` metaclass
     # later so that it can create a method that just returns the cached result of `func`.
-    #
     wrapped = wrapped_func_container['wrapped']
     wrapped.cached_method = True
 
