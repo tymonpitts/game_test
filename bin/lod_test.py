@@ -220,8 +220,9 @@ class LodTestItem(game_core.TreeNode):
             for j, vertex in enumerate(child.vertices):
                 if i == j:
                     continue
-                # TODO: might need some work
-                ...
+                else:
+                    vertex.pos_vector = self.vertices[j].pos - vertex.pos
+                    vertex.normal_vector = self.vertices[j].normal - vertex.normal
 
 
 class LodTestTree(game_core.Octree):
