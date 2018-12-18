@@ -39,7 +39,7 @@ print 'Initialized: time=%s' % (time.time() - start_time)
 start_time = time.time()
 num = 1000
 for i in xrange(num):
-    tree.get_node(access_point)
+    tree.get_node_from_point(access_point)
 t = time.time() - start_time
 print 'Time for %s accesses: %s' % (num, t)
 

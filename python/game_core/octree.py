@@ -18,6 +18,3 @@ class Octree(abstract_tree.AbstractTree):
 
     """
     DIMENSIONS = 3
-    BITWISE_NUMS = (1 << i for i in range(DIMENSIONS))
-    NUM_CHILDREN = 2 ** DIMENSIONS
-    NEIGHBORS = ((i ^ b for b in BITWISE_NUMS) for i in range(NUM_CHILDREN))

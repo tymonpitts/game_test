@@ -1,9 +1,10 @@
-from typing import List, Tuple, Union
+__all__ = ['AbstractTree', 'TreeNode']
+
+from typing import Any, List, Optional
 
 from . import decorators
 from . import Point
 
-__all__ = ['AbstractTree', 'TreeNode']
 
 class TreeNode(object):
     """ A temporary proxy to store runtime information about a node.
@@ -17,14 +18,13 @@ class TreeNode(object):
     __metaclass__ = decorators.EnableCachedMethods
 
     def __init__(self, data, tree, parent, index):
+        # type: (_TreeNodeData, AbstractTree, Optional[TreeNode], int) -> None
         """
-
         Args:
-            data (Any): The data for this node.  This could be anything but
-                it's worth noting that a branch node is denoted by having its
-                data be a list of child data.
+            data (_TreeNodeData): All data for this node including this node's
+                value and list of children
             tree (AbstractTree): The tree this node belongs to.
-            parent (Union[TreeNode, None]):
+            parent (Optional[TreeNode]):
             index (int): This node's index in its parent's list of children
         """
         self.index = index
@@ -38,30 +38,11 @@ class TreeNode(object):
         else:
             return '%s(type="branch", depth=%s, index=%s, origin=%s)' % (self.__class__.__name__, self.get_depth(), self.index, self.get_origin())
 
-    def refresh_data(self):
-        """ Refresh the stored data on this node with the actual data stored in the tree
-        """
-        try:
-            self.parent.refresh_data()
-        except AttributeError:
-            assert self.parent is None
-            self._data = self.tree._root
-        else:
-            self._data = self.parent._data[self.index]
+    def get_value(self):
+        return self._data.value
 
-    def _set_data(self, value):
-        """ Set the data for this node ensuring that the parent node's child
-        list is updated appropriately
-
-        Args:
-            value (Any): The new data value
-        """
-        self._data = value
-        try:
-            self.parent._data[self.index] = self._data
-        except AttributeError:  # parent is None
-            assert self.parent is None
-            pass
+    def set_value(self, value):
+        self._data.data = value
 
     def is_leaf(self):
         """ Return whether or not this node is a leaf node (i.e. has no children)
@@ -69,17 +50,15 @@ class TreeNode(object):
         Returns:
             bool
         """
-        return not self.is_branch()
+        return self._data.children is None
 
     def is_branch(self):
         """ Return whether or not this node is a branch node (i.e. has children).
 
-        Note that this check will not be accurate if the leaf node data type is a list.
-
         Returns:
             bool
         """
-        return isinstance(self._data, list)
+        return self._data.children is not None
 
     @decorators.cached_method
     def get_children(self):
@@ -94,7 +73,7 @@ class TreeNode(object):
             return tuple()
 
         # some subclasses may add extra data to branch nodes so be sure to only get data from the actual child nodes
-        children_data = self._data[:self.tree.child_array_size]
+        children_data = self._data[:self.tree.num_children]
         create_node_proxy = self.tree._create_node_proxy
         return tuple(
             create_node_proxy(child_data, parent=self, index=child_index)
@@ -115,9 +94,9 @@ class TreeNode(object):
         """
         index = 0
         origin = self.get_origin()
-        for i, num in enumerate(self.tree.BITWISE_NUMS):
+        for i, dimension_bit in enumerate(self.tree.dimension_bits):
             if point[i] >= origin[i]:
-                index |= num
+                index |= dimension_bit
         return self.get_children()[index]
 
     @decorators.cached_method
@@ -167,57 +146,60 @@ class TreeNode(object):
             return Point()
         half_size = self.get_size() / 2.0
         index = self.index
-        for i, num in enumerate(self.tree.BITWISE_NUMS):
-            if index & num:
+        for i, dimension_bit in enumerate(self.tree.dimension_bits):
+            if index & dimension_bit:
                 result[i] += half_size
             else:
                 result[i] -= half_size
         return result
 
+
+class _TreeNodeData(object):
+    """ Internal object to store just the data of a node in a tree
+    """
+    def __init__(self, value=None, children=None):
+        # type: (Optional[Any], Optional[List[_TreeNodeData]]) -> None
+        self.value = value
+        self.children = children
+
+
 class AbstractTree(object):
     """ Base class for all spacial tree structures (e.g. QuadTree, Octree, etc...)
 
+    All attributes are considered read-only
+
     Attributes:
-        child_array_size (int): The number of children the tree can have.
-            This attribute is read only.
+        dimension_bits (Tuple[int, ...]): A tuple of single bits whose length
+            matches the tree's dimensions. This is used to define how
+            child indexes are determined.
+        num_children (int): The number of children the tree can have.
+        neighbor_indexes (Tuple[Tuple[int, ...]]): Indexes for each child's adjacent siblings
         size (int): The spacial size of the tree
-            This attribute is read only.
         max_depth (int): The maximum allowed depth of the tree
-            This attribute is read only.
         min_size (float): The minimum allowed size of a node within the tree.
-            This attribute is read only.
     """
     # Abstract: must be reimplemented in base classes
     # This defines how many dimensions the tree has
     DIMENSIONS = None  # type: int
 
-    # Abstract: must be reimplemented in base classes
-    # This defines how child indexes are determined and should contain an
-    # entry for every dimension.
-    BITWISE_NUMS = None  # type: Tuple[int]
-
     def __init__(self, size, max_depth):
-        self.child_array_size = 2 ** self.DIMENSIONS
+        self.dimension_bits = tuple(1 << i for i in range(self.DIMENSIONS))
+        self.num_children = 2 ** self.DIMENSIONS
+        self.neighbor_indexes = tuple(
+            tuple(i ^ b for b in self.dimension_bits)
+            for i in range(self.num_children)
+        )
+
         self.size = float(size)
         self.max_depth = int(max_depth)
         self.min_size = self.size / 2.0 ** self.max_depth
-        self._root = self._create_root()
-
-    def _create_root(self):
-        """
-        Returns:
-            List[None]
-        """
-        return [None] * self.child_array_size
+        self._data = _TreeNodeData()
 
     def _create_node_proxy(self, data, parent=None, index=0):
-        """
-        Returns:
-            TreeNode
-        """
+        # type: (_TreeNodeData, Optional[TreeNode], int) -> TreeNode
         return TreeNode(data, tree=self, parent=parent, index=index)
 
-    def get_node(self, point, max_depth=None):
+    def get_node_from_point(self, point, max_depth=None):
         """ Get the leaf node that contains the provided point
 
         Args:
@@ -242,7 +224,7 @@ class AbstractTree(object):
             if abs(point[i]) > half_size:
                 return None
 
-        node = self._create_node_proxy(self._root)
+        node = self._create_node_proxy(self._data, parent=None, index=0)
         depth = 0
         max_depth = max_depth if max_depth is not None else self.max_depth
         while depth < max_depth:

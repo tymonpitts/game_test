@@ -11,5 +11,4 @@ class QuadTree(abstract_tree.AbstractTree):
            -x +x
     """
     DIMENSIONS = 2
-    BITWISE_NUMS = (1, 2)
 

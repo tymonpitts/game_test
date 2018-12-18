@@ -8,6 +8,10 @@ from . import quadtree
 from . import Point
 from . import BoundingBox2D
 
+
+# TODO: update after AbstractTree refactor
+
+
 class HeightMapNode(abstract_tree.TreeNode):
 
     @decorators.cached_method
@@ -24,30 +28,6 @@ class HeightMapNode(abstract_tree.TreeNode):
         bbox_max = self.get_origin() + half_size_point
         return BoundingBox2D(bbox_min, bbox_max)
 
-    def _get_leaf_height(self):
-        return self._data
-
-    def _get_branch_height(self):
-        return self._data[4]
-
-    def get_height(self):
-        if self.is_branch():
-            return self._get_branch_height()
-        else:
-            return self._get_leaf_height()
-
-    def _set_leaf_height(self, value):
-        self._set_data(value)
-
-    def _set_branch_height(self, value):
-        self._data[4] = value
-
-    def set_height(self, value):
-        if self.is_branch():
-            self._set_branch_height(value)
-        else:
-            self._set_leaf_height(value)
-
     def _generate_debug_texture(self, viewport, width, height, texture):
         """
         Args:
@@ -60,9 +40,9 @@ class HeightMapNode(abstract_tree.TreeNode):
         """
         # data range: -max_height to max_height
         max_height = self.tree.max_height
-        height = self._get_leaf_height()
+        height = self.get_value()
         if height is None:
-            height = self.parent._get_branch_height()
+            height = self.parent.get_value()
         if height <= 0.0:
             r = g = (max_height + height) / max_height * 0.5
             b = 1.0
@@ -164,7 +144,7 @@ class HeightMapNode(abstract_tree.TreeNode):
             1.0,
         ]
 
-        if self.index & self.tree.BITWISE_NUMS[0]:
+        if self.index & self.tree.dimension_bits[0]:
             """
             Child is in one of these spots:
                 . x
@@ -197,7 +177,7 @@ class HeightMapNode(abstract_tree.TreeNode):
                 corner_points[0].x = new_x
                 corner_points[2].x = new_x
 
-        if self.index & self.tree.BITWISE_NUMS[1]:
+        if self.index & self.tree.dimension_bits[1]:
             """
             Child is in one of these spots:
                 x x
@@ -239,10 +219,8 @@ class HeightMapNode(abstract_tree.TreeNode):
                 # TODO: this node retrieval could likely be optimized by
                 #       caching the parent level nodes by origin before
                 #       generating child nodes
-                corner_node = self.tree.get_node(corner_point, max_depth=self.parent.get_depth())
-            # corner_node should always be a branch so retrieve its height
-            # directly instead of calling get_height
-            corner_height = corner_node._get_branch_height()
+                corner_node = self.tree.get_node_from_point(corner_point, max_depth=self.parent.get_depth())
+            corner_height = corner_node.get_value()
             parent_height += corner_height * corner_weights[i]
         parent_height /= sum(corner_weights)  # TODO: this could likely be optimized
 
@@ -256,7 +234,7 @@ class HeightMapNode(abstract_tree.TreeNode):
         max_deviation = self.tree.max_height / 2 ** ( float( self.get_depth() ) ** 0.92 )
         deviation = rand.uniform(-max_deviation, max_deviation)
         height = parent_height + deviation
-        self.set_height(height)
+        self.set_value(height)
 
 class HeightMap(quadtree.QuadTree):
     """
@@ -287,10 +265,10 @@ class HeightMap(quadtree.QuadTree):
         :type point: Point
         :type max_depth: int
         """
-        nodes = [self._create_node_proxy(self._root)]
+        nodes = [self._create_node_proxy(self._data)]
         depth = 0
         size = self.size
-        new_branch_data = [None] * (self.child_array_size + 1)
+        new_branch_data = [None] * (self.num_children + 1)
         max_depth = max_depth if max_depth is not None else self.max_depth
         while nodes and depth < max_depth:
             next_nodes = []
@@ -299,7 +277,9 @@ class HeightMap(quadtree.QuadTree):
             for node in nodes:
                 distance = point.distance( node.get_origin() )
                 if distance <= max_distance:
-                    if node._data is None:
+                    if node.get_children() is None:
+                        # TODO: flush `get_children` cache
+                        # TODO: update the line below to set children after refactoring tree data storage
                         node._set_data( list(new_branch_data) )
                         node._generate_height()
                     next_nodes.extend( node.get_children() )
@@ -313,10 +293,10 @@ class HeightMap(quadtree.QuadTree):
 
         :type bbox: BoundingBox2D
         """
-        nodes = [self._create_node_proxy(self._root)]
+        nodes = [self._create_node_proxy(self._data)]
         depth = 0
         size = self.size
-        new_branch_data = [None] * (self.child_array_size + 1)
+        new_branch_data = [None] * (self.num_children + 1)
         while nodes:
             next_nodes = []
             """:type: list[HeightMapNode]"""
@@ -328,6 +308,8 @@ class HeightMap(quadtree.QuadTree):
                 node_bbox = BoundingBox2D(bbox_min, bbox_max)
                 if bbox.collides(node_bbox):
                     if node._data is None:
+                        # TODO: flush `get_children` cache
+                        # TODO: update the line below to set children after refactoring tree data storage
                         node._set_data( list(new_branch_data) )
                         node._generate_height()
                     next_nodes.extend( node.get_children() )
@@ -337,7 +319,7 @@ class HeightMap(quadtree.QuadTree):
             size /= 2.0
 
     def generate_all(self):
-        nodes = [self._create_node_proxy(self._root)]
+        nodes = [self._create_node_proxy(self._data)]
         while nodes:
             next_nodes = []
             """:type: list[HeightMapNode]"""
@@ -346,15 +328,6 @@ class HeightMap(quadtree.QuadTree):
                     node._generate_height()
                 next_nodes.extend( node.get_children() )
             nodes = next_nodes
-
-    def _create_root(self):
-        """
-        Returns:
-            List
-        """
-        root = super(HeightMap, self)._create_root()
-        root.append(self.base_height)
-        return root
 
     def _generate_debug_texture(self, viewport, width, height, texture):
         """
