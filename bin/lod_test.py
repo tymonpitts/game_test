@@ -223,6 +223,9 @@ class LodTestItem(game_core.TreeNode):
                 else:
                     vertex.pos_vector = self.vertices[j].pos - vertex.pos
                     vertex.normal_vector = self.vertices[j].normal - vertex.normal
+                    if children[j]:
+                        vertex.pos_vector *= 0.5
+                        vertex.normal_vector *= 0.5
 
 
 class LodTestTree(game_core.Octree):
