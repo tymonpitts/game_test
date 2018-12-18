@@ -159,41 +159,24 @@ class TransitionVertex(object):
 
 class LodTestItem(game_core.TreeNode):
 
-    def __init__(self, data, tree, parent, index):
+    def init_value(self):
+        """ Initialize this item's vertices/normals/faces and store the
+        result in this item's TreeNodeData.value
         """
-        Args:
-            data (Any): The data for this node.  This could be anything but
-                it's worth noting that a branch node is denoted by having its
-                data be a list of child data.
-            tree (AbstractTree): The tree this node belongs to.
-            parent (Union[TreeNode, None]):
-            index (int): This node's index in its parent's list of children
-        """
-        # TODO: store verts/faces in tree data
-        super(LodTestItem, self).__init__(data, tree, parent, index)
-        self.vertices = None  # type: Optional[Tuple[TransitionVertex]]
-        self.faces = None  # type: Optional[Tuple[int]]
-
-    def init_vertices(self):
-        # no data so clear vert/face lists and exit
-        if not self._data:
-            self.vertices = None
-            self.faces = None
-            return
-
         # initialize vert/face lists with default values
-        self.vertices = tuple(
+        vertices = tuple(
             TransitionVertex(
                 pos=game_core.Point(*smooth_cube.VERTICES[i]),
                 normal=game_core.Vector(*smooth_cube.NORMALS[i]),
             )
             for i in range(8)
         )
-        self.faces = smooth_cube.INDICES
+        faces = smooth_cube.INDICES
 
-        # if we're a leaf node then early exit. Transition vectors will be
-        # computed when initializing parent verts
+        # if we're a leaf node then just set vert/face values and early exit.
+        # Transition vectors will be computed when initializing parent verts
         if self.is_leaf():
+            self.set_value([vertices, faces])
             return
 
         # we're a branch. initialize verts based on children
