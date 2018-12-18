@@ -171,44 +171,45 @@ class LodTestItem(game_core.TreeNode):
             )
             for i in range(8)
         )
-        faces = smooth_cube.INDICES
 
         # if we're a leaf node then just set vert/face values and early exit.
         # Transition vectors will be computed when initializing parent verts
         if self.is_leaf():
-            self.set_value([vertices, faces])
+            # TODO: store vert data, not the vert instances
+            self.set_value(vertices)
             return
 
         # we're a branch. initialize verts based on children
         children = self.get_children()
         for i, child in enumerate(children):
             if child:
-                self.vertices[i].pos = child.vertices[i].pos
-                self.vertices[i].normal = child.vertices[i].normal
+                vertices[i].pos = child.get_value()[i].pos
+                vertices[i].normal = child.get_value()[i].normal
             else:
                 for neighbor in self.tree.NEIGHBORS[i]:
                     child = children[neighbor]
                     if child:
-                        self.vertices[i].pos = child.vertices[i].pos
-                        self.vertices[i].normal = child.vertices[i].normal
+                        vertices[i].pos = child.get_value()[i].pos
+                        vertices[i].normal = child.get_value()[i].normal
                         break
                 else:
-                    self.vertices[i].pos = self.get_origin()
-                    self.vertices[i].normal = ...
+                    vertices[i].pos = self.get_origin()
+                    vertices[i].normal = ...
 
         # update transition vectors for children's verts
         for i, child in enumerate(children):
             if not child:
                 continue
-            for j, vertex in enumerate(child.vertices):
+            for j, vertex in enumerate(child.get_value()):
                 if i == j:
                     continue
                 else:
-                    vertex.pos_vector = self.vertices[j].pos - vertex.pos
-                    vertex.normal_vector = self.vertices[j].normal - vertex.normal
+                    vertex.pos_vector = vertices[j].pos - vertex.pos
+                    vertex.normal_vector = vertices[j].normal - vertex.normal
                     if children[j]:
                         vertex.pos_vector *= 0.5
                         vertex.normal_vector *= 0.5
+        self.set_value(vertices)
 
 
 class LodTestTree(game_core.Octree):
