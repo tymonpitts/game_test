@@ -68,6 +68,8 @@ class Window(game_core.AbstractWindow):
         self.cube = game_core.Mesh(smooth_cube.VERTICES, smooth_cube.NORMALS, smooth_cube.INDICES, smooth_cube.DRAW_METHOD)
         self.shaders = shaders.init()
         self.camera = Camera([0, 0, 2])
+        self.lod_tree = LodTestTree(size=2, max_depth=2)
+        self.lod_tree.init()
 
     def keyboard_event(self, key, scancode, action, mods):
         """
@@ -138,14 +140,14 @@ class Window(game_core.AbstractWindow):
                     i_cam_mat
                 )
 
-        with self.shaders['skin'] as shader:
+        with self.shaders['lod_surface'] as shader:
             light_dir = game_core.Vector(0.1, 1.0, 0.5)
             light_dir.normalize()
             GL.glUniform4fv(shader.uniforms['dirToLight'], 1, list(light_dir))
 
-        with self.shaders['skin'] as shader:
+        with self.shaders['lod_surface'] as shader:
             GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
-            self.cube.render()
+            self.lod_tree.draw()
 
 
 class TransitionVertex(object):
@@ -159,7 +161,7 @@ class TransitionVertex(object):
 
 class LodTestItem(game_core.TreeNode):
 
-    def init_value(self):
+    def init(self):
         """ Initialize this item's vertices/normals/faces and store the
         result in this item's TreeNodeData.value
         """
@@ -210,6 +212,12 @@ class LodTestItem(game_core.TreeNode):
                         vertex.pos_vector *= 0.5
                         vertex.normal_vector *= 0.5
         self.set_value(vertices)
+        
+    def draw(self):
+        vertexes = self.get_value()
+        if not self.get_value():
+            return
+        raise
 
 
 class LodTestTree(game_core.Octree):
@@ -220,6 +228,26 @@ class LodTestTree(game_core.Octree):
             TreeNode
         """
         return LodTestItem(data, tree=self, parent=parent, index=index)
+
+    def init(self):
+        root = self.get_root()
+        root.split()
+        children = root.get_children()
+        children_to_fill = (0b000, 0b111)
+        for index in children_to_fill:
+            child = children[0b000]
+            child.set_value('foo')
+            child.init()
+        root.init()
+
+    def draw(self):
+        distance = ...
+        if distance > 4:
+            self.get_root().draw(distance)
+        else:
+            for child in self.get_root().get_children():
+                if child:
+                    child.draw(distance)
 
 
 def generate_scenarios():

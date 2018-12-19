@@ -43,6 +43,10 @@ class TreeNode(object):
 
     def set_value(self, value):
         self._data.data = value
+        
+    def split(self):
+        # TODO: clear get_children cache
+        raise NotInplementedError
 
     def is_leaf(self):
         """ Return whether or not this node is a leaf node (i.e. has no children)
@@ -73,6 +77,7 @@ class TreeNode(object):
             return tuple()
 
         # some subclasses may add extra data to branch nodes so be sure to only get data from the actual child nodes
+        # TODO: outdated since refactor
         children_data = self._data[:self.tree.num_children]
         create_node_proxy = self.tree._create_node_proxy
         return tuple(
@@ -158,7 +163,7 @@ class _TreeNodeData(object):
     """ Internal object to store just the data of a node in a tree
     """
     def __init__(self, value=None, children=None):
-        # type: (Optional[Any], Optional[List[_TreeNodeData]]) -> None
+        # type: (Optional[Any], Optional[List[Optional[_TreeNodeData]]]) -> None
         self.value = value
         self.children = children
 
@@ -183,6 +188,7 @@ class AbstractTree(object):
     DIMENSIONS = None  # type: int
 
     def __init__(self, size, max_depth):
+        # TODO: remove size from base class. it is not always relevant
         self.dimension_bits = tuple(1 << i for i in range(self.DIMENSIONS))
         self.num_children = 2 ** self.DIMENSIONS
         self.neighbor_indexes = tuple(
@@ -198,6 +204,9 @@ class AbstractTree(object):
     def _create_node_proxy(self, data, parent=None, index=0):
         # type: (_TreeNodeData, Optional[TreeNode], int) -> TreeNode
         return TreeNode(data, tree=self, parent=parent, index=index)
+
+    def get_root(self):
+        return self._create_node_proxy(self._data)
 
     def get_node_from_point(self, point, max_depth=None):
         """ Get the leaf node that contains the provided point
