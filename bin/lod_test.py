@@ -149,7 +149,7 @@ class Window(game_core.AbstractWindow):
 
         with self.shaders['lod_surface'] as shader:
             GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
-            self.lod_tree.draw()
+            self.lod_tree.draw(self.camera)
 
 
 class TransitionVertex(object):
