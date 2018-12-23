@@ -42,11 +42,12 @@ class TreeNode(object):
         return self._data.value
 
     def set_value(self, value):
-        self._data.data = value
-        
+        self._data.value = value
+
     def split(self):
         # TODO: clear get_children cache
-        raise NotInplementedError
+        # TODO: validate we haven't already split?
+        self._data.children = [_TreeNodeData() for i in range(self.tree.num_children)]
 
     def is_leaf(self):
         """ Return whether or not this node is a leaf node (i.e. has no children)
@@ -77,8 +78,7 @@ class TreeNode(object):
             return tuple()
 
         # some subclasses may add extra data to branch nodes so be sure to only get data from the actual child nodes
-        # TODO: outdated since refactor
-        children_data = self._data[:self.tree.num_children]
+        children_data = self._data.children
         create_node_proxy = self.tree._create_node_proxy
         return tuple(
             create_node_proxy(child_data, parent=self, index=child_index)

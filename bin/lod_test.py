@@ -1,9 +1,8 @@
 #! /usr/bin/python
 import glfw
 from OpenGL import GL
-from OpenGL import GL
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import game_core
 from game_core import FLOAT_SIZE
@@ -163,110 +162,141 @@ class TransitionVertex(object):
 
 
 class LodTestItem(game_core.TreeNode):
+    def get_item_value(self):
+        return self.get_value()[0]
+
+    def get_vertexes(self):
+        return self.get_value()[1]
+
+    def get_gl_vertex_array(self):
+        return self.get_value()[2]
+
+    def set_item_value(self, value):
+        self.get_value()[0] = value
+
+    def set_vertexes(self, vertexes):
+        self.get_value()[1] = vertexes
+
+    def set_gl_vertex_array(self, vertex_array_object):
+        self.get_value()[2] = vertex_array_object
 
     def init(self):
-        """ Initialize this item's vertices/normals/faces and store the
-        result in this item's TreeNodeData.value
-        """
-        # if we're a leaf node then just set vert/face values and early exit.
-        # Transition vectors will be computed when initializing parent verts
-        self.set_value([None, None])
+        # TODO: figure out a better way to set values and init
+        # self.set_value([None, None, None])
         if self.is_branch():
             self.init_branch_vertexes()
+        elif self.get_item_value() is None:
+            return
         else:
             self.init_leaf_vertexes()
-        self.init_vertex_buffer()
-        
+        self.init_gl_vertex_array()
+
     def init_leaf_vertexes(self):
-        # initialize vert/face lists with default values
-        self.get_value()[0] = tuple(
+        # initialize vert list with default values from smooth cube
+        self.set_vertexes(tuple(
             TransitionVertex(
-                pos=game_core.Point(*smooth_cube.VERTICES[i]),
-                normal=game_core.Vector(*smooth_cube.NORMALS[i]),
+                pos=game_core.Point(
+                    smooth_cube.VERTICES[i * 3],
+                    smooth_cube.VERTICES[i * 3 + 1],
+                    smooth_cube.VERTICES[i * 3 + 2],
+                ),
+                normal=game_core.Vector(
+                    smooth_cube.NORMALS[i * 3],
+                    smooth_cube.NORMALS[i * 3 + 1],
+                    smooth_cube.NORMALS[i * 3 + 2],
+                ),
             )
             for i in range(8)
-        )
+        ))
 
     def init_branch_vertexes(self):
-        # initialize verts based on children
+        # initialize verts based on children's verts
         vertexes = []  # type: List[TransitionVertex]
         children = self.get_children()
         for i, child in enumerate(children):
             # TODO: copy values instead of referencing
-            if child:
-                pos = child.get_value()[i].pos
-                normal = child.get_value()[i].normal
+            if child.get_value() is not None and child.get_item_value() is not None:
+                pos = child.get_vertexes()[i].pos
+                normal = child.get_vertexes()[i].normal
             else:
                 for neighbor in self.tree.NEIGHBORS[i]:
                     child = children[neighbor]
-                    if child:
-                        pos = child.get_value()[i].pos
-                        normal = child.get_value()[i].normal
+                    if child.get_value() is not None and child.get_item_value() is not None:
+                        pos = child.get_vertexes()[i].pos
+                        normal = child.get_vertexes()[i].normal
                         break
                 else:
-                    vertices[i].pos = self.get_origin()
-                    vertices[i].normal = ...
+                    pos = self.get_origin()
+                    # TODO: figure out proper normals
+                    normal = game_core.Vector(
+                        smooth_cube.NORMALS[i * 3],
+                        smooth_cube.NORMALS[i * 3 + 1],
+                        smooth_cube.NORMALS[i * 3 + 2],
+                    )
             vertexes.append(TransitionVertex(pos=pos, normal=normal))
 
         # update transition vectors for children's verts
         for i, child in enumerate(children):
-            if not child:
+            if child.get_value() is None and child.get_item_value() is None:
                 continue
-            for j, vertex in enumerate(child.get_value()):
+            for j, vertex in enumerate(child.get_vertexes()):
                 if i == j:
                     continue
                 else:
-                    vertex.pos_vector = vertices[j].pos - vertex.pos
-                    vertex.normal_vector = vertices[j].normal - vertex.normal
+                    vertex.pos_vector = vertexes[j].pos - vertex.pos
+                    vertex.normal_vector = vertexes[j].normal - vertex.normal
                     if children[j]:
                         vertex.pos_vector *= 0.5
                         vertex.normal_vector *= 0.5
-        self.get_value()[0] = tuple(vertexes)
+        self.set_vertexes(tuple(vertexes))
 
-    def init_vertex_buffer(self):
-        self.get_value()[1] = vao = GL.glGenVertexArrays(1)
-        vertexes = self.get_value()[0]
+    def init_gl_vertex_array(self):
+        vertex_array = GL.glGenVertexArrays(1)
+        self.set_gl_vertex_array(vertex_array)
+        vertexes = self.get_vertexes()
         data = [v.pos[i] for v in vertexes for i in range(3)]
         data += [v.normal[i] for v in vertexes for i in range(3)]
         data += [v.pos_vector[i] for v in vertexes for i in range(3)]
         data += [v.normal_vector[i] for v in vertexes for i in range(3)]
 
-        GL.glBindVertexArray(vao)
-        vertexBufferObject = GL.glGenBuffers(1)
+        GL.glBindVertexArray(vertex_array)
+        vertex_buffer = GL.glGenBuffers(1)
 
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vertexBufferObject)
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vertex_buffer)
         array_type = (GL.GLfloat*len(data))
         GL.glBufferData(
                 GL.GL_ARRAY_BUFFER,
                 len(data)*FLOAT_SIZE,
                 array_type(*data),
-                GL.GL_STATIC_DRAW)
+                GL.GL_STATIC_DRAW
+        )
         GL.glEnableVertexAttribArray(0)
         GL.glEnableVertexAttribArray(1)
         GL.glEnableVertexAttribArray(2)
         GL.glEnableVertexAttribArray(3)
         GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, None)
-        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(vertices)*FLOAT_SIZE))
-        GL.glVertexAttribPointer(2, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(vertices)*2*FLOAT_SIZE))
-        GL.glVertexAttribPointer(3, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(vertices)*3*FLOAT_SIZE))
+        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(vertexes)*FLOAT_SIZE))
+        GL.glVertexAttribPointer(2, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(vertexes)*2*FLOAT_SIZE))
+        GL.glVertexAttribPointer(3, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(vertexes)*3*FLOAT_SIZE))
 
-        indexBufferObject = GL.glGenBuffers(1)
-        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, indexBufferObject)
+        index_buffer = GL.glGenBuffers(1)
+        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, index_buffer)
         array_type = (GL.GLuint*len(smooth_cube.INDICES))
         GL.glBufferData(
                 GL.GL_ELEMENT_ARRAY_BUFFER,
                 len(smooth_cube.INDICES)*FLOAT_SIZE,
                 array_type(*smooth_cube.INDICES),
-                GL.GL_STATIC_DRAW)
+                GL.GL_STATIC_DRAW
+        )
 
         GL.glBindVertexArray(0)
 
     def draw(self):
-        vao = self.get_value()[1]
-        if vao is None:
+        gl_vertex_array = self.get_gl_vertex_array()
+        if gl_vertex_array is None:
             return
 
-        GL.glBindVertexArray(vao)
+        GL.glBindVertexArray(gl_vertex_array)
         GL.glDrawElements(smooth_cube.DRAW_METHOD, len(smooth_cube.INDICES), GL.GL_UNSIGNED_INT, None)
         GL.glBindVertexArray(0)
 
@@ -281,22 +311,24 @@ class LodTestTree(game_core.Octree):
         return LodTestItem(data, tree=self, parent=parent, index=index)
 
     def init(self):
-        root = self.get_root()
+        root = self.get_root()  # type: LodTestItem
         root.split()
-        children = root.get_children()
+        children = root.get_children()  # type: List[LodTestItem]
         children_to_fill = (0b000, 0b111)
         for index in children_to_fill:
-            child = children[0b000]
-            child.set_value('foo')
+            child = children[index]
+            child.set_value(['foo', None, None])
             child.init()
         root.init()
 
-    def draw(self):
-        distance = ...
+    def draw(self, camera):
+        # type: (Camera) -> None
+        root = self.get_root()
+        distance = (game_core.Point() * camera.matrix).distance(root.get_origin())
         if distance > 4:
-            self.get_root().draw(distance)
+            root.draw(distance)
         else:
-            for child in self.get_root().get_children():
+            for child in root.get_children():
                 if child:
                     child.draw(distance)
 
