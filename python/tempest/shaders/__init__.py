@@ -35,6 +35,19 @@ def init():
         GL.glUniform4f(shader.uniforms['lightIntensity'], 0.8, 0.8, 0.8, 1.0)
         GL.glUniform4f(shader.uniforms['ambientIntensity'], 0.2, 0.2, 0.2, 1.0)
 
+    shaders['lod_test'] = game_core.ShaderProgram(vert_shaders['lod_test'], frag_shaders['lod_test'])
+    shaders['lod_test'].store_uniform_location('distanceToCamera')
+    shaders['lod_test'].store_uniform_location('modelToWorldMatrix')
+    shaders['lod_test'].store_uniform_location('worldToCameraMatrix')
+    shaders['lod_test'].store_uniform_location('cameraToClipMatrix')
+    shaders['lod_test'].store_uniform_location('lightIntensity')
+    shaders['lod_test'].store_uniform_location('ambientIntensity')
+    shaders['lod_test'].store_uniform_location('diffuseColor')
+    shaders['lod_test'].store_uniform_location('dirToLight')
+    with shaders['lod_test'] as shader:
+        GL.glUniform4f(shader.uniforms['lightIntensity'], 0.8, 0.8, 0.8, 1.0)
+        GL.glUniform4f(shader.uniforms['ambientIntensity'], 0.2, 0.2, 0.2, 1.0)
+
     shaders['point'] = game_core.ShaderProgram(vert_shaders['point'], frag_shaders['frag'])
     shaders['point'].store_uniform_location('modelToWorldMatrix')
     shaders['point'].store_uniform_location('worldToCameraMatrix')

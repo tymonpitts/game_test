@@ -2,7 +2,7 @@
 import glfw
 from OpenGL import GL
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import game_core
 from game_core import FLOAT_SIZE
@@ -142,14 +142,15 @@ class Window(game_core.AbstractWindow):
                     i_cam_mat
                 )
 
-        with self.shaders['lod_surface'] as shader:
-            light_dir = game_core.Vector(0.1, 1.0, 0.5)
-            light_dir.normalize()
-            GL.glUniform4fv(shader.uniforms['dirToLight'], 1, list(light_dir))
+        light_dir = game_core.Vector(0.1, 1.0, 0.5)
+        light_dir.normalize()
+        distance_to_camera = (game_core.Point() * self.camera.matrix).distance(self.lod_tree.get_root().get_origin())
 
-        with self.shaders['lod_surface'] as shader:
+        with self.shaders['lod_test'] as shader:
+            GL.glUniform4fv(shader.uniforms['dirToLight'], 1, list(light_dir))
+            GL.glUniform1f(shader.uniforms['distanceToCamera'], distance_to_camera)
             GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
-            self.lod_tree.draw(self.camera)
+            self.lod_tree.draw(distance_to_camera)
 
 
 class TransitionVertex(object):
@@ -219,7 +220,7 @@ class LodTestItem(game_core.TreeNode):
                 pos = child.get_vertexes()[i].pos
                 normal = child.get_vertexes()[i].normal
             else:
-                for neighbor in self.tree.NEIGHBORS[i]:
+                for neighbor in self.tree.neighbor_indexes[i]:
                     child = children[neighbor]
                     if child.get_value() is not None and child.get_item_value() is not None:
                         pos = child.get_vertexes()[i].pos
@@ -237,7 +238,7 @@ class LodTestItem(game_core.TreeNode):
 
         # update transition vectors for children's verts
         for i, child in enumerate(children):
-            if child.get_value() is None and child.get_item_value() is None:
+            if child.get_value() is None or child.get_item_value() is None:
                 continue
             for j, vertex in enumerate(child.get_vertexes()):
                 if i == j:
@@ -312,25 +313,27 @@ class LodTestTree(game_core.Octree):
 
     def init(self):
         root = self.get_root()  # type: LodTestItem
+        root.set_value([None, None, None])
         root.split()
         children = root.get_children()  # type: List[LodTestItem]
+        for child in children:
+            child.set_value([None, None, None])
         children_to_fill = (0b000, 0b111)
         for index in children_to_fill:
             child = children[index]
-            child.set_value(['foo', None, None])
+            child.set_item_value('foo')
             child.init()
         root.init()
 
-    def draw(self, camera):
-        # type: (Camera) -> None
-        root = self.get_root()
-        distance = (game_core.Point() * camera.matrix).distance(root.get_origin())
-        if distance > 4:
-            root.draw(distance)
+    def draw(self, distance_to_camera):
+        # type: (float) -> None
+        root = self.get_root()  # type: LodTestItem
+        if distance_to_camera > 4:
+            root.draw()
         else:
             for child in root.get_children():
                 if child:
-                    child.draw(distance)
+                    child.draw()
 
 
 def generate_scenarios():
