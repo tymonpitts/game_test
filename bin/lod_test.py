@@ -59,11 +59,11 @@ class Camera(game_core.AbstractCamera):
 class Window(game_core.AbstractWindow):
     def __init__(self):
         super(Window, self).__init__()
-        self.title = 'Window'
+        self.title = 'LOD Test'
         self.cube = None  # type: game_core.Mesh
-        
         self.shaders = None  # type: Dict[str, game_core.ShaderProgram]
         self.camera = None  # type: Camera
+        self.lod_tree = None  # type: LodTestTree
 
     def init(self):
         super(Window, self).init()
@@ -72,25 +72,6 @@ class Window(game_core.AbstractWindow):
         self.camera = Camera([0, 0, 2])
         self.lod_tree = LodTestTree(size=2, max_depth=2)
         self.lod_tree.init()
-
-    def keyboard_event(self, key, scancode, action, mods):
-        """
-        Args:
-            key (int): The keyboard key that was pressed or released.
-            scancode (int): The system-specific scancode of the key.
-            action (int): glfw.PRESS, glfw.RELEASE or glfw.REPEAT.
-            mods (int): Bit field describing which modifier keys were held down.
-        """
-        super(Window, self).keyboard_event(key, scancode, action, mods)
-
-    def mouse_button_event(self, button, action, mods):
-        """Called when a mouse button is pressed or released
-
-        :param int button: The pressed/released mouse button
-        :param int action: glfw.PRESS or glfw.RELEASE
-        :param int mods: Bit field describing which modifier keys were held down.
-        """
-        pass
 
     def reshape(self, w, h):
         super(Window, self).reshape(w, h)
