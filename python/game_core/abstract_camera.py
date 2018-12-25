@@ -1,11 +1,8 @@
-#============================================================================#
-#================================================================= IMPORTS ==#
 import math
 
 from . import Point, Matrix
 
-#============================================================================#
-#=================================================================== CLASS ==#
+
 class AbstractCamera(object):
     def __init__(self, position=None):
         self._fovy = 45.0
@@ -29,16 +26,16 @@ class AbstractCamera(object):
 
     def _build_perspective_mat(self, w, h):
         aspect = w / float(h)
-        frustumDepth = self._far - self._near
-        oneOverDepth = 1.0 / frustumDepth
+        frustum_depth = self._far - self._near
+        one_over_depth = 1.0 / frustum_depth
 
         result = Matrix()
-        result[1,1] = 1.0 / math.tan(0.5 * math.radians(self._fovy))
-        result[0,0] = -1.0 * result[1,1] / aspect
-        result[2,2] = self._far * oneOverDepth
-        result[3,2] = (-self._far * self._near) * oneOverDepth
-        result[2,3] = 1.0
-        result[3,3] = 0.0
+        result[1, 1] = 1.0 / math.tan(0.5 * math.radians(self._fovy))
+        result[0, 0] = -1.0 * result[1,1] / aspect
+        result[2, 2] = self._far * one_over_depth
+        result[3, 2] = (-self._far * self._near) * one_over_depth
+        result[2, 3] = 1.0
+        result[3, 3] = 0.0
         return result
 
     def clamp_angle(self, angle, clamp=math.pi):
