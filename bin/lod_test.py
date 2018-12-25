@@ -98,10 +98,6 @@ class Window(game_core.AbstractWindow):
 
     def reshape(self, w, h):
         super(Window, self).reshape(w, h)
-
-        window_center = [w / 2, h / 2]
-        glfw.set_cursor_pos(self.window, *window_center)
-
         self.camera.reshape(w, h)
 
         projection_matrix = self.camera.projection_matrix.tolist()
