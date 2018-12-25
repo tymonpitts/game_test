@@ -234,17 +234,17 @@ class LodTestItem(game_core.TreeNode):
 
     def init_gl_vertex_array(self):
         vertex_array = GL.glGenVertexArrays(1)
+        GL.glBindVertexArray(vertex_array)
         self.set_gl_vertex_array(vertex_array)
+
+        vertex_buffer = GL.glGenBuffers(1)
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vertex_buffer)
         vertexes = self.get_vertexes()
         data = [v.pos[i] for v in vertexes for i in range(3)]
         data += [v.normal[i] for v in vertexes for i in range(3)]
         data += [v.pos_vector[i] for v in vertexes for i in range(3)]
         data += [v.normal_vector[i] for v in vertexes for i in range(3)]
 
-        GL.glBindVertexArray(vertex_array)
-        vertex_buffer = GL.glGenBuffers(1)
-
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vertex_buffer)
         array_type = (GL.GLfloat*len(data))
         GL.glBufferData(
                 GL.GL_ARRAY_BUFFER,
