@@ -64,9 +64,17 @@ class Window(game_core.AbstractWindow):
         self.shaders = None  # type: Dict[str, game_core.ShaderProgram]
         self.camera = None  # type: Camera
         self.lod_tree = None  # type: LodTestTree
+        self._last_cursor_position = None  # type: Tuple[float, float]
 
     def init(self):
         super(Window, self).init()
+
+        # hide the cursor and lock it to this window. GLFW will then take care
+        # of all the details of cursor re-centering and offset calculation and
+        # providing the application with a virtual cursor position
+        glfw.set_input_mode(self.window, glfw.CURSOR, glfw.CURSOR_DISABLED)
+        self._last_cursor_position = glfw.get_cursor_pos(self.window)
+
         self.cube = game_core.Mesh(smooth_cube.VERTICES, smooth_cube.NORMALS, smooth_cube.INDICES, smooth_cube.DRAW_METHOD)
         self.shaders = shaders.init()
         self.camera = Camera([0, 0, 2])
@@ -95,20 +103,17 @@ class Window(game_core.AbstractWindow):
 
     def get_mouse_movement(self):
         # type: () -> Tuple[float, float]
-        window_size = glfw.get_framebuffer_size(self.window)
-        window_center = [window_size[0] / 2, window_size[1] / 2]
-
-        cursor_pos = glfw.get_cursor_pos(self.window)
-        glfw.set_cursor_pos(self.window, *window_center)
-
+        cursor_position = glfw.get_cursor_pos(self.window)
         mouse_movement = (
-            float(cursor_pos[0] - window_center[0]) / window_center[0],
-            float(cursor_pos[1] - window_center[1]) / window_center[1],
+            cursor_position[0] - self._last_cursor_position[0],
+            cursor_position[1] - self._last_cursor_position[1],
         )
+        self._last_cursor_position = cursor_position
         return mouse_movement
 
     def integrate(self, t, delta_time):
-        self.camera.integrate(t, delta_time, self, self.get_mouse_movement())
+        mouse_movement = self.get_mouse_movement()
+        self.camera.integrate(t, delta_time, self, mouse_movement)
 
     def draw(self):
         i_cam_mat = self.camera.matrix.inverse().tolist()
