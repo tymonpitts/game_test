@@ -15,23 +15,41 @@ class Camera(game_core.AbstractCamera):
         super(Camera, self).__init__(position)
         self.acceleration_rate = 1.0
 
-    def integrate(self, time, delta_time, window, mouse_movement):
-        # type: (float, float, Window, Tuple[float, float]) -> None
-        if mouse_movement[0]:
-            print 'X: {}'.format(mouse_movement)
-        if mouse_movement[1]:
-            print 'Y: {}'.format(mouse_movement)
+        # store the last position of the cursor so we can compute how far
+        # the cursor moved since the last time we integrated. This will
+        # allow us to determine how much to rotate the camera.
+        self._last_cursor_position = None  # type: Tuple[float, float]
 
-        # add mouse_move to rotation values
-        #
-        self._rotx += mouse_movement[1]
+    def integrate(self, time, delta_time, window):
+        # type: (float, float, Window) -> None
+
+        # determine how far the cursor has moved since the last time
+        # we integrated. Store the new cursor position so we can do this
+        # again next time we integrate.
+        cursor_position = glfw.get_cursor_pos(window.window)
+        if self._last_cursor_position is None:
+            cursor_movement = (0.0, 0.0)
+            self._last_cursor_position = cursor_position
+        else:
+            cursor_movement = (
+                cursor_position[0] - self._last_cursor_position[0],
+                cursor_position[1] - self._last_cursor_position[1],
+            )
+            self._last_cursor_position = cursor_position
+        # if mouse_movement[0]:
+        #     print 'X: {}'.format(mouse_movement)
+        # if mouse_movement[1]:
+        #     print 'Y: {}'.format(mouse_movement)
+
+        # turn the cursor movement into rotational values
+        self._rotx += cursor_movement[1]
         self._rotx = self.clamp_angle(self._rotx)
-        self._roty -= mouse_movement[0]
+        self._roty -= cursor_movement[0]
         ry = self._get_roty_matrix()
         rx = self._get_rotx_matrix()
 
-        # add movement
-        #
+        # turn key presses into translation values and add that translation
+        # to this camera's world position
         translate = game_core.Vector()
         if glfw.KEY_W in window.pressed_keys:
             translate.z += self.acceleration_rate
@@ -49,8 +67,7 @@ class Camera(game_core.AbstractCamera):
         translate *= ry
         self._pos += translate
 
-        # resolve xform components to a full matrix
-        #
+        # resolve orientation and position components to a full matrix
         self.matrix = rx * ry
         for i in xrange(3):
             self.matrix[3, i] = self._pos[i]
@@ -64,7 +81,6 @@ class Window(game_core.AbstractWindow):
         self.shaders = None  # type: Dict[str, game_core.ShaderProgram]
         self.camera = None  # type: Camera
         self.lod_tree = None  # type: LodTestTree
-        self._last_cursor_position = None  # type: Tuple[float, float]
 
     def init(self):
         super(Window, self).init()
@@ -73,7 +89,6 @@ class Window(game_core.AbstractWindow):
         # of all the details of cursor re-centering and offset calculation and
         # providing the application with a virtual cursor position
         glfw.set_input_mode(self.window, glfw.CURSOR, glfw.CURSOR_DISABLED)
-        self._last_cursor_position = glfw.get_cursor_pos(self.window)
 
         self.cube = game_core.Mesh(smooth_cube.VERTICES, smooth_cube.NORMALS, smooth_cube.INDICES, smooth_cube.DRAW_METHOD)
         self.shaders = shaders.init()
@@ -101,19 +116,8 @@ class Window(game_core.AbstractWindow):
                     projection_matrix,
                 )
 
-    def get_mouse_movement(self):
-        # type: () -> Tuple[float, float]
-        cursor_position = glfw.get_cursor_pos(self.window)
-        mouse_movement = (
-            cursor_position[0] - self._last_cursor_position[0],
-            cursor_position[1] - self._last_cursor_position[1],
-        )
-        self._last_cursor_position = cursor_position
-        return mouse_movement
-
     def integrate(self, t, delta_time):
-        mouse_movement = self.get_mouse_movement()
-        self.camera.integrate(t, delta_time, self, mouse_movement)
+        self.camera.integrate(t, delta_time, self)
 
     def draw(self):
         i_cam_mat = self.camera.matrix.inverse().tolist()
