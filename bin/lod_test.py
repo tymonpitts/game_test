@@ -100,9 +100,10 @@ class Window(game_core.AbstractWindow):
         super(Window, self).reshape(w, h)
         self.camera.reshape(w, h)
 
+        # TODO: move this to camera's reshape
         projection_matrix = self.camera.projection_matrix.tolist()
         for shader in self.shaders.itervalues():
-            if 'cameraToClipMatrix' not in shader.uniforms:
+            if 'cameraToClipMatrix' in shader.uniforms:
                 with shader:
                     GL.glUniformMatrix4fv(
                         shader.uniforms['cameraToClipMatrix'],
@@ -115,10 +116,11 @@ class Window(game_core.AbstractWindow):
         self.camera.integrate(t, delta_time, self)
 
     def draw(self):
+        # TODO: move this to camera's integrate
         i_cam_mat = self.camera.matrix.inverse().tolist()
-        cameraWorldPosition = self.camera._pos.tolist()
+        cameraWorldPosition = list(self.camera._pos)
         for shader in self.shaders.itervalues():
-            if 'worldToCameraMatrix' not in shader.uniforms:
+            if 'worldToCameraMatrix' in shader.uniforms:
                 with shader:
                     GL.glUniformMatrix4fv(
                         shader.uniforms['worldToCameraMatrix'],
@@ -126,7 +128,7 @@ class Window(game_core.AbstractWindow):
                         GL.GL_FALSE,
                         i_cam_mat
                     )
-            if 'cameraWorldPosition' not in shader.uniforms:
+            if 'cameraWorldPosition' in shader.uniforms:
                 with shader:
                     GL.glUniform4fv(
                         shader.uniforms['cameraWorldPosition'],
