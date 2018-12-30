@@ -137,6 +137,7 @@ class Window(game_core.AbstractWindow):
 
         light_dir = game_core.Vector(0.1, 1.0, 0.5)
         light_dir.normalize()
+        distance_to_camera = (game_core.Point() * self.camera.matrix).distance(self.lod_tree.get_root().get_origin())
         with self.shaders['lod_test'] as shader:
             GL.glUniform4fv(shader.uniforms['dirToLight'], 1, list(light_dir))
             GL.glUniform1f(shader.uniforms['transitionEndDistance'], 2.0)
