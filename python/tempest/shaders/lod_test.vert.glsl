@@ -12,17 +12,21 @@ uniform vec4 ambientIntensity;
 uniform vec4 diffuseColor;
 uniform vec4 dirToLight;
 
-uniform float distanceToCamera; // The _item's_ distance to the camera, not this vert's distance
+uniform float transitionEndDistance;  // distance from the camera when LOD transition from coarse to fine is finished
+uniform float transitionRange;  // distance from transitionEndDistance to start LOD transition from coarse to fine
+uniform vec4 cameraWorldPosition;
 uniform mat4 cameraToClipMatrix;
 uniform mat4 worldToCameraMatrix;
 uniform mat4 modelToWorldMatrix;
 
 void main()
 {
+    float distanceToCamera = distance(position, cameraWorldPosition);
+    float transition = clamp((distanceToCamera - transitionEndDistance) / transitionRange, 0, 1)
     mat4 model_to_camera = worldToCameraMatrix * modelToWorldMatrix;
-    gl_Position = cameraToClipMatrix * model_to_camera * (vec4(position, 1.0) + (vec4(positionTransitionVector, 0.0) * distanceToCamera));
+    gl_Position = cameraToClipMatrix * model_to_camera * (vec4(position, 1.0) + (vec4(positionTransitionVector, 0.0) * transition));
 
-    vec4 normal_in_world = normalize(modelToWorldMatrix * (vec4(normal, 0.0) + (vec4(normalTransitionVector, 0.0) * distanceToCamera)));
+    vec4 normal_in_world = normalize(modelToWorldMatrix * (vec4(normal, 0.0) + (vec4(normalTransitionVector, 0.0) * transition)));
 
     float cosAngIncidence = dot(normal_in_world, dirToLight);
     cosAngIncidence = clamp(cosAngIncidence, 0, 1);

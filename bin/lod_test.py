@@ -103,38 +103,44 @@ class Window(game_core.AbstractWindow):
         projection_matrix = self.camera.projection_matrix.tolist()
         for shader in self.shaders.itervalues():
             if 'cameraToClipMatrix' not in shader.uniforms:
-                continue
-            with shader:
-                GL.glUniformMatrix4fv(
-                    shader.uniforms['cameraToClipMatrix'],
-                    1,
-                    GL.GL_FALSE,
-                    projection_matrix,
-                )
+                with shader:
+                    GL.glUniformMatrix4fv(
+                        shader.uniforms['cameraToClipMatrix'],
+                        1,
+                        GL.GL_FALSE,
+                        projection_matrix,
+                    )
 
     def integrate(self, t, delta_time):
         self.camera.integrate(t, delta_time, self)
 
     def draw(self):
         i_cam_mat = self.camera.matrix.inverse().tolist()
+        cameraWorldPosition = self.camera._pos.tolist()
         for shader in self.shaders.itervalues():
             if 'worldToCameraMatrix' not in shader.uniforms:
-                continue
-            with shader:
-                GL.glUniformMatrix4fv(
-                    shader.uniforms['worldToCameraMatrix'],
-                    1,
-                    GL.GL_FALSE,
-                    i_cam_mat
-                )
+                with shader:
+                    GL.glUniformMatrix4fv(
+                        shader.uniforms['worldToCameraMatrix'],
+                        1,
+                        GL.GL_FALSE,
+                        i_cam_mat
+                    )
+            if 'cameraWorldPosition' not in shader.uniforms:
+                with shader:
+                    GL.glUniform4fv(
+                        shader.uniforms['cameraWorldPosition'],
+                        1,
+                        GL.GL_FALSE,
+                        cameraWorldPosition,
+                    )
 
         light_dir = game_core.Vector(0.1, 1.0, 0.5)
         light_dir.normalize()
-        distance_to_camera = (game_core.Point() * self.camera.matrix).distance(self.lod_tree.get_root().get_origin())
-
         with self.shaders['lod_test'] as shader:
             GL.glUniform4fv(shader.uniforms['dirToLight'], 1, list(light_dir))
-            GL.glUniform1f(shader.uniforms['distanceToCamera'], distance_to_camera)
+            GL.glUniform1f(shader.uniforms['transitionEndDistance'], 2.0)
+            GL.glUniform1f(shader.uniforms['transitionRange'], 3.0)
             GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
             self.lod_tree.draw(distance_to_camera)
 
