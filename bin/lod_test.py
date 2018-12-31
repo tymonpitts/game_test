@@ -81,6 +81,7 @@ class Window(game_core.AbstractWindow):
         self.shaders = None  # type: Dict[str, game_core.ShaderProgram]
         self.camera = None  # type: Camera
         self.lod_tree = None  # type: LodTestTree
+        self.ndc_vao = None  # type: int
 
     def init(self):
         super(Window, self).init()
@@ -138,8 +139,10 @@ class Window(game_core.AbstractWindow):
         self.camera.integrate(t, delta_time, self)
 
     def draw(self):
-        GL.glBindVertexArray(self.ndc_vao)
-        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
+        with self.shaders['ndc']:
+            GL.glBindVertexArray(self.ndc_vao)
+            GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
+            GL.glBindVertexArray(0)
         return
     
         # TODO: move this to camera's integrate
