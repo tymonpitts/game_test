@@ -95,6 +95,28 @@ class Window(game_core.AbstractWindow):
         self.camera = Camera([0, 0, 2])
         self.lod_tree = LodTestTree(size=2, max_depth=2)
         self.lod_tree.init()
+        
+        self.ndc_vao = GL.glGenVertexArrays(1)
+        GL.glBindVertexArray(self.ndc_vao)
+
+        vertex_buffer = GL.glGenBuffers(1)
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vertex_buffer)
+        data = [
+            -1.0, -1.0, 0.0,
+            0.0, 1.0, 0.0,
+            1.0, -1.0, 0.0,
+        ]
+
+        array_type = (GL.GLfloat*len(data))
+        GL.glBufferData(
+                GL.GL_ARRAY_BUFFER,
+                len(data)*FLOAT_SIZE,
+                array_type(*data),
+                GL.GL_STATIC_DRAW
+        )
+        GL.glEnableVertexAttribArray(0)
+        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, None)
+        GL.glBindVertexArray(0)
 
     def reshape(self, w, h):
         super(Window, self).reshape(w, h)
@@ -115,6 +137,10 @@ class Window(game_core.AbstractWindow):
         self.camera.integrate(t, delta_time, self)
 
     def draw(self):
+        GL.glBindVertexArray(self.ndc_vao)
+        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
+        return
+    
         i_cam_mat = self.camera.matrix.inverse().tolist()
         cameraWorldPosition = self.camera._pos.tolist()
         for shader in self.shaders.itervalues():
