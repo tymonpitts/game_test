@@ -21,8 +21,8 @@ uniform mat4 modelToWorldMatrix;
 
 void main()
 {
-    float distanceToCamera = distance(position, cameraWorldPosition);
-    float transition = clamp((distanceToCamera - transitionEndDistance) / transitionRange, 0, 1)
+    float distanceToCamera = length(cameraWorldPosition - vec4(position, 0.0));
+    float transition = clamp((distanceToCamera - transitionEndDistance) / transitionRange, 0, 1);
     mat4 model_to_camera = worldToCameraMatrix * modelToWorldMatrix;
     gl_Position = cameraToClipMatrix * model_to_camera * (vec4(position, 1.0) + (vec4(positionTransitionVector, 0.0) * transition));
 
