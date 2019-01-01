@@ -90,12 +90,11 @@ class Window(game_core.AbstractWindow):
 
         self.cube = game_core.Mesh(smooth_cube.VERTICES, smooth_cube.NORMALS, smooth_cube.INDICES, smooth_cube.DRAW_METHOD)
 
-        self.light_direction = game_core.Vector(0.1, 1.0, 0.5)
-        self.light_direction.normalize()
-
         self.shaders = shaders.init()
 
         # set a default matrix for models, otherwise its nothing apparently
+        self.light_direction = game_core.Vector(0.1, 1.0, 0.5)
+        self.light_direction.normalize()
         model_mat = game_core.Matrix()
         for name, shader in self.shaders.iteritems():
             if 'modelToWorldMatrix' in shader.uniforms:
@@ -106,13 +105,22 @@ class Window(game_core.AbstractWindow):
                         GL.GL_FALSE,
                         model_mat.tolist()
                     )
+            if 'dirToLight' in shader.uniforms:
+                with shader:
+                    GL.glUniform4fv(shader.uniforms['dirToLight'], 1, list(self.light_direction))
+            if 'diffuseColor' in shader.uniforms:
+                with shader:
+                    GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
 
         self.camera = Camera(position=[0.0, 0.0, 1.5])
         self.camera.init(*glfw.get_framebuffer_size(self.window))
         self._set_perspective_matrix()
 
-        self.lod_tree = LodTestTree(size=2, max_depth=2)
+        self.lod_tree = LodTestTree(size=1.0, max_depth=2)
         self.lod_tree.init()
+        with self.shaders['lod_test'] as shader:
+            GL.glUniform1f(shader.uniforms['transitionEndDistance'], 2.0)
+            GL.glUniform1f(shader.uniforms['transitionRange'], 3.0)
 
     def _set_perspective_matrix(self):
         # TODO: move this to camera's reshape
@@ -150,6 +158,7 @@ class Window(game_core.AbstractWindow):
                     )
             if 'cameraWorldPosition' in shader.uniforms:
                 with shader:
+                    print('camera pos: {}'.format(camera_world_position))
                     GL.glUniform4fv(
                         shader.uniforms['cameraWorldPosition'],
                         1,
@@ -158,12 +167,8 @@ class Window(game_core.AbstractWindow):
                     )
 
     def draw(self):
-        with self.shaders['lod_test'] as shader:
-            GL.glUniform4fv(shader.uniforms['dirToLight'], 1, list(self.light_direction))
-            GL.glUniform1f(shader.uniforms['transitionEndDistance'], 2.0)
-            GL.glUniform1f(shader.uniforms['transitionRange'], 3.0)
-            GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
-            self.lod_tree.draw(self.distance_to_camera)
+        with self.shaders['lod_test']:
+            self.lod_tree.draw(self)
 
         GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE)
         with self.shaders['simple']:
@@ -214,11 +219,11 @@ class LodTestItem(game_core.TreeNode):
         # initialize vert list with default values from smooth cube
         self.set_vertexes(tuple(
             TransitionVertex(
-                pos=game_core.Point(
+                pos=self.get_origin() + game_core.Vector(
                     smooth_cube.VERTICES[i * 3],
                     smooth_cube.VERTICES[i * 3 + 1],
                     smooth_cube.VERTICES[i * 3 + 2],
-                ),
+                ) * self.get_size(),
                 normal=game_core.Vector(
                     smooth_cube.NORMALS[i * 3],
                     smooth_cube.NORMALS[i * 3 + 1],
@@ -239,10 +244,9 @@ class LodTestItem(game_core.TreeNode):
                 normal = child.get_vertexes()[i].normal
             else:
                 for neighbor in self.tree.neighbor_indexes[i]:
-                    child = children[neighbor]
-                    if child.get_value() is not None and child.get_item_value() is not None:
-                        pos = child.get_vertexes()[i].pos
-                        normal = child.get_vertexes()[i].normal
+                    if children[neighbor].get_value() is not None and children[neighbor].get_item_value() is not None:
+                        pos = children[neighbor].get_vertexes()[i].pos
+                        normal = children[neighbor].get_vertexes()[i].normal
                         break
                 else:
                     pos = self.get_origin()
@@ -258,15 +262,15 @@ class LodTestItem(game_core.TreeNode):
         for i, child in enumerate(children):
             if child.get_value() is None or child.get_item_value() is None:
                 continue
+            # print('leaf {}:'.format(bin(i)))
             for j, vertex in enumerate(child.get_vertexes()):
-                if i == j:
-                    continue
-                else:
+                if i != j:
                     vertex.pos_vector = vertexes[j].pos - vertex.pos
                     vertex.normal_vector = vertexes[j].normal - vertex.normal
-                    if children[j]:
+                    if children[j].get_value() is not None and children[j].get_item_value() is not None:
                         vertex.pos_vector *= 0.5
                         vertex.normal_vector *= 0.5
+                # print('  vert {} pos transition: {}'.format(bin(j), vertex.pos_vector))
         self.set_vertexes(tuple(vertexes))
 
     def init_gl_vertex_array(self):
@@ -310,10 +314,22 @@ class LodTestItem(game_core.TreeNode):
 
         GL.glBindVertexArray(0)
 
-    def draw(self):
+    def draw(self, window):
+        # type: (Window) -> None
         gl_vertex_array = self.get_gl_vertex_array()
         if gl_vertex_array is None:
             return
+
+        # matrix = game_core.Matrix()
+        # for i in xrange(3):
+        #     matrix[i, i] = self.get_size()
+        #     matrix[3, i] = self.get_origin()[i]
+        # GL.glUniformMatrix4fv(
+        #     window.shaders['lod_test'].uniforms['modelToWorldMatrix'],
+        #     1,
+        #     GL.GL_FALSE,
+        #     matrix.tolist()
+        # )
 
         GL.glBindVertexArray(gl_vertex_array)
         GL.glDrawElements(smooth_cube.DRAW_METHOD, len(smooth_cube.INDICES), GL.GL_UNSIGNED_INT, None)
@@ -343,15 +359,15 @@ class LodTestTree(game_core.Octree):
             child.init()
         root.init()
 
-    def draw(self, distance_to_camera):
-        # type: (float) -> None
+    def draw(self, window):
+        # type: (Window) -> None
         root = self.get_root()  # type: LodTestItem
-        if distance_to_camera > 4:
-            root.draw()
+        if window.distance_to_camera > 4:
+            root.draw(window)
         else:
             for child in root.get_children():
                 if child:
-                    child.draw()
+                    child.draw(window)
 
 
 def generate_scenarios():

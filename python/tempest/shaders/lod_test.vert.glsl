@@ -23,10 +23,11 @@ void main()
 {
     float distance_to_camera = length(cameraWorldPosition - vec4(position, 0.0));
     float transition = clamp(((distance_to_camera - transitionEndDistance) / transitionRange), 0, 1);
-    vec4 transition_position = vec4(position, 1.0) + (vec4(positionTransitionVector, 0.0) * transition);
-    gl_Position = cameraToClipMatrix * worldToCameraMatrix * modelToWorldMatrix * transition_position;
+    vec4 world_position = modelToWorldMatrix * vec4(position, 1.0);
+    vec4 transition_position = world_position + (vec4(positionTransitionVector, 0.0) * transition);
+    gl_Position = cameraToClipMatrix * worldToCameraMatrix * transition_position;
 
-    vec4 normal_in_world = normalize(modelToWorldMatrix * (vec4(normal, 0.0) + (vec4(normalTransitionVector, 0.0) * transition)));
+    vec4 normal_in_world = normalize(modelToWorldMatrix * vec4(normal, 0.0) + (vec4(normalTransitionVector, 0.0) * transition));
 
     float cosAngIncidence = dot(normal_in_world, dirToLight);
     cosAngIncidence = clamp(cosAngIncidence, 0, 1);
