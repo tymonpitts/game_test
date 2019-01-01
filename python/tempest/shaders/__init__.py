@@ -38,6 +38,7 @@ def init():
     shaders['lod_test'] = game_core.ShaderProgram(vert_shaders['lod_test'], frag_shaders['frag'])
     shaders['lod_test'].store_uniform_location('transitionEndDistance')
     shaders['lod_test'].store_uniform_location('transitionRange')
+    shaders['lod_test'].store_uniform_location('cameraWorldPosition')
     shaders['lod_test'].store_uniform_location('modelToWorldMatrix')
     shaders['lod_test'].store_uniform_location('worldToCameraMatrix')
     shaders['lod_test'].store_uniform_location('cameraToClipMatrix')

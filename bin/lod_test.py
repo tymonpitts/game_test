@@ -158,12 +158,10 @@ class Window(game_core.AbstractWindow):
                     )
             if 'cameraWorldPosition' in shader.uniforms:
                 with shader:
-                    print('camera pos: {}'.format(camera_world_position))
                     GL.glUniform4fv(
                         shader.uniforms['cameraWorldPosition'],
                         1,
-                        GL.GL_FALSE,
-                        camera_world_position,
+                        camera_world_position
                     )
 
     def draw(self):
