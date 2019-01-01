@@ -51,6 +51,11 @@ def init():
 
     shaders['ndc'] = game_core.ShaderProgram(vert_shaders['ndc'], frag_shaders['ndc'])
 
+    shaders['simple'] = game_core.ShaderProgram(vert_shaders['simple'], frag_shaders['simple'])
+    shaders['simple'].store_uniform_location('modelToWorldMatrix')
+    shaders['simple'].store_uniform_location('worldToCameraMatrix')
+    shaders['simple'].store_uniform_location('cameraToClipMatrix')
+
     shaders['point'] = game_core.ShaderProgram(vert_shaders['point'], frag_shaders['frag'])
     shaders['point'].store_uniform_location('modelToWorldMatrix')
     shaders['point'].store_uniform_location('worldToCameraMatrix')

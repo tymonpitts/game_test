@@ -36,15 +36,11 @@ class Camera(game_core.AbstractCamera):
                 cursor_position[1] - self._last_cursor_position[1],
             )
             self._last_cursor_position = cursor_position
-        # if mouse_movement[0]:
-        #     print 'X: {}'.format(mouse_movement)
-        # if mouse_movement[1]:
-        #     print 'Y: {}'.format(mouse_movement)
 
         # turn the cursor movement into rotational values
-        self._rotx += cursor_movement[1]
+        self._rotx -= cursor_movement[1] * 0.01
         self._rotx = self.clamp_angle(self._rotx)
-        self._roty -= cursor_movement[0]
+        self._roty -= cursor_movement[0] * 0.01
         ry = self._get_roty_matrix()
         rx = self._get_rotx_matrix()
 
@@ -52,13 +48,13 @@ class Camera(game_core.AbstractCamera):
         # to this camera's world position
         translate = game_core.Vector()
         if glfw.KEY_W in window.pressed_keys:
-            translate.z += self.acceleration_rate
-        if glfw.KEY_S in window.pressed_keys:
             translate.z -= self.acceleration_rate
+        if glfw.KEY_S in window.pressed_keys:
+            translate.z += self.acceleration_rate
         if glfw.KEY_A in window.pressed_keys:
-            translate.x += self.acceleration_rate
-        if glfw.KEY_D in window.pressed_keys:
             translate.x -= self.acceleration_rate
+        if glfw.KEY_D in window.pressed_keys:
+            translate.x += self.acceleration_rate
         if glfw.KEY_SPACE in window.pressed_keys:
             translate.y += self.acceleration_rate
         if glfw.KEY_LEFT_SHIFT in window.pressed_keys:
@@ -81,7 +77,8 @@ class Window(game_core.AbstractWindow):
         self.shaders = None  # type: Dict[str, game_core.ShaderProgram]
         self.camera = None  # type: Camera
         self.lod_tree = None  # type: LodTestTree
-        self.ndc_vao = None  # type: int
+        self.light_direction = None  # type: game_core.Vector
+        self.distance_to_camera = None  # type: float
 
     def init(self):
         super(Window, self).init()
@@ -92,40 +89,35 @@ class Window(game_core.AbstractWindow):
         glfw.set_input_mode(self.window, glfw.CURSOR, glfw.CURSOR_DISABLED)
 
         self.cube = game_core.Mesh(smooth_cube.VERTICES, smooth_cube.NORMALS, smooth_cube.INDICES, smooth_cube.DRAW_METHOD)
+
+        self.light_direction = game_core.Vector(0.1, 1.0, 0.5)
+        self.light_direction.normalize()
+
         self.shaders = shaders.init()
-        self.camera = Camera([0, 0, 2])
+
+        # set a default matrix for models, otherwise its nothing apparently
+        model_mat = game_core.Matrix()
+        for name, shader in self.shaders.iteritems():
+            if 'modelToWorldMatrix' in shader.uniforms:
+                with shader:
+                    GL.glUniformMatrix4fv(
+                        shader.uniforms['modelToWorldMatrix'],
+                        1,
+                        GL.GL_FALSE,
+                        model_mat.tolist()
+                    )
+
+        self.camera = Camera(position=[0.0, 0.0, 1.5])
+        self.camera.init(*glfw.get_framebuffer_size(self.window))
+        self._set_perspective_matrix()
+
         self.lod_tree = LodTestTree(size=2, max_depth=2)
         self.lod_tree.init()
-        
-        self.ndc_vao = GL.glGenVertexArrays(1)
-        GL.glBindVertexArray(self.ndc_vao)
 
-        vertex_buffer = GL.glGenBuffers(1)
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vertex_buffer)
-        data = [
-            -1.0, -1.0, 0.0,
-            0.0, 1.0, 0.0,
-            1.0, -1.0, 0.0,
-        ]
-
-        array_type = (GL.GLfloat*len(data))
-        GL.glBufferData(
-                GL.GL_ARRAY_BUFFER,
-                len(data)*FLOAT_SIZE,
-                array_type(*data),
-                GL.GL_STATIC_DRAW
-        )
-        GL.glEnableVertexAttribArray(0)
-        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, None)
-        GL.glBindVertexArray(0)
-
-    def reshape(self, w, h):
-        super(Window, self).reshape(w, h)
-        self.camera.reshape(w, h)
-
+    def _set_perspective_matrix(self):
         # TODO: move this to camera's reshape
         projection_matrix = self.camera.projection_matrix.tolist()
-        for shader in self.shaders.itervalues():
+        for name, shader in self.shaders.iteritems():
             if 'cameraToClipMatrix' in shader.uniforms:
                 with shader:
                     GL.glUniformMatrix4fv(
@@ -135,19 +127,18 @@ class Window(game_core.AbstractWindow):
                         projection_matrix,
                     )
 
+    def reshape(self, w, h):
+        super(Window, self).reshape(w, h)
+        self.camera.reshape(w, h)
+        self._set_perspective_matrix()
+
     def integrate(self, t, delta_time):
         self.camera.integrate(t, delta_time, self)
+        self.distance_to_camera = (game_core.Point() * self.camera.matrix).distance(self.lod_tree.get_root().get_origin())
 
-    def draw(self):
-        with self.shaders['ndc']:
-            GL.glBindVertexArray(self.ndc_vao)
-            GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
-            GL.glBindVertexArray(0)
-        return
-    
         # TODO: move this to camera's integrate
         i_cam_mat = self.camera.matrix.inverse().tolist()
-        cameraWorldPosition = list(self.camera._pos)
+        camera_world_position = list(self.camera._pos)
         for shader in self.shaders.itervalues():
             if 'worldToCameraMatrix' in shader.uniforms:
                 with shader:
@@ -163,18 +154,21 @@ class Window(game_core.AbstractWindow):
                         shader.uniforms['cameraWorldPosition'],
                         1,
                         GL.GL_FALSE,
-                        cameraWorldPosition,
+                        camera_world_position,
                     )
 
-        light_dir = game_core.Vector(0.1, 1.0, 0.5)
-        light_dir.normalize()
-        distance_to_camera = (game_core.Point() * self.camera.matrix).distance(self.lod_tree.get_root().get_origin())
+    def draw(self):
         with self.shaders['lod_test'] as shader:
-            GL.glUniform4fv(shader.uniforms['dirToLight'], 1, list(light_dir))
+            GL.glUniform4fv(shader.uniforms['dirToLight'], 1, list(self.light_direction))
             GL.glUniform1f(shader.uniforms['transitionEndDistance'], 2.0)
             GL.glUniform1f(shader.uniforms['transitionRange'], 3.0)
             GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
-            self.lod_tree.draw(distance_to_camera)
+            self.lod_tree.draw(self.distance_to_camera)
+
+        GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE)
+        with self.shaders['simple']:
+            self.cube.render()
+        GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)
 
 
 class TransitionVertex(object):

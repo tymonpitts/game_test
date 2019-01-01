@@ -21,10 +21,10 @@ uniform mat4 modelToWorldMatrix;
 
 void main()
 {
-    float distanceToCamera = length(cameraWorldPosition - vec4(position, 0.0));
-    float transition = clamp((distanceToCamera - transitionEndDistance) / transitionRange, 0, 1);
-    mat4 model_to_camera = worldToCameraMatrix * modelToWorldMatrix;
-    gl_Position = cameraToClipMatrix * model_to_camera * (vec4(position, 1.0) + (vec4(positionTransitionVector, 0.0) * transition));
+    float distance_to_camera = length(cameraWorldPosition - vec4(position, 0.0));
+    float transition = clamp(((distance_to_camera - transitionEndDistance) / transitionRange), 0, 1);
+    vec4 transition_position = vec4(position, 1.0) + (vec4(positionTransitionVector, 0.0) * transition);
+    gl_Position = cameraToClipMatrix * worldToCameraMatrix * modelToWorldMatrix * transition_position;
 
     vec4 normal_in_world = normalize(modelToWorldMatrix * (vec4(normal, 0.0) + (vec4(normalTransitionVector, 0.0) * transition)));
 
