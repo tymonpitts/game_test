@@ -14,6 +14,8 @@ class AbstractCamera(object):
         position = position or [0.0, 0.0, 0.0]
         self._pos = Point.cast(position)
         self.matrix = Matrix()
+        for i in xrange(3):
+            self.matrix[3, i] = self._pos[i]
 
         self.projection_matrix = Matrix()
 
@@ -24,17 +26,34 @@ class AbstractCamera(object):
     def reshape(self, w, h):
         self.projection_matrix = self._build_perspective_mat(w, h)
 
+    def init(self, w, h):
+        self.projection_matrix = self._build_perspective_mat(w, h)
+
     def _build_perspective_mat(self, w, h):
-        aspect = w / float(h)
-        frustum_depth = self._far - self._near
-        one_over_depth = 1.0 / frustum_depth
+        aspect = float(w) / float(h)
+        ymax = self._near * math.tan(math.radians(self._fovy))
+        xmax = ymax * aspect
+
+        left = -xmax
+        right = xmax
+        bottom = -ymax
+        top = ymax
+
+        temp = 2.0 * self._near
+        temp2 = right - left
+        temp3 = top - bottom
+        temp4 = self._far - self._near
 
         result = Matrix()
-        result[1, 1] = 1.0 / math.tan(0.5 * math.radians(self._fovy))
-        result[0, 0] = -1.0 * result[1,1] / aspect
-        result[2, 2] = self._far * one_over_depth
-        result[3, 2] = (-self._far * self._near) * one_over_depth
-        result[2, 3] = 1.0
+        result[0, 0] = temp / temp2
+        result[1, 1] = temp / temp3
+
+        result[2, 0] = (right + left) / temp2
+        result[2, 1] = (top + bottom) / temp3
+        result[2, 2] = (-self._far - self._near) / temp4
+        result[2, 3] = -1.0
+
+        result[3, 2] = (-temp * self._far) / temp4
         result[3, 3] = 0.0
         return result
 

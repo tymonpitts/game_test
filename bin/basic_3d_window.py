@@ -1,6 +1,4 @@
 #! /usr/bin/python
-import math
-
 import glfw
 from OpenGL import GL
 from OpenGL.GL.shaders import compileShader
@@ -48,42 +46,7 @@ class Window(game_core.AbstractWindow):
         self.title = 'Basic 3D Window'
         self.cube = None  # type: game_core.Mesh
         self.shader = None  # type: game_core.ShaderProgram
-
-    def build_perspective_matrix(self):
-        # type: () -> game_core.Matrix
-        """ Create a perspective matrix the same way GLU does
-
-        Code transposed from gluPerspective
-        """
-        aspect = float(self.initial_width) / float(self.initial_height)
-        near = 0.1
-        far = 10.0
-        fovy = 45.0
-        ymax = near * math.tan(math.radians(fovy))
-        xmax = ymax * aspect
-
-        left = -xmax
-        right = xmax
-        bottom = -ymax
-        top = ymax
-
-        temp = 2.0 * near
-        temp2 = right - left
-        temp3 = top - bottom
-        temp4 = far - near
-
-        result = game_core.Matrix()
-        result[0, 0] = temp / temp2
-        result[1, 1] = temp / temp3
-
-        result[2, 0] = (right + left) / temp2
-        result[2, 1] = (top + bottom) / temp3
-        result[2, 2] = (-far - near) / temp4
-        result[2, 3] = -1.0
-
-        result[3, 2] = (-temp * far) / temp4
-        result[3, 3] = 0.0
-        return result
+        self.camera = None  # type: game_core.AbstractCamera
 
     def init(self):
         super(Window, self).init()
@@ -96,6 +59,10 @@ class Window(game_core.AbstractWindow):
         # create a simple cube with smooth normals
         self.cube = game_core.Mesh(smooth_cube.VERTICES, smooth_cube.NORMALS, smooth_cube.INDICES, smooth_cube.DRAW_METHOD)
 
+        # create a camera
+        self.camera = game_core.AbstractCamera(position=[0.0, 0.0, 1.5])
+        self.camera.init(*glfw.get_framebuffer_size(self.window))
+
         # compile a simple shader with MVP matrices
         frag_shader = compileShader(frag_shader_source, GL.GL_FRAGMENT_SHADER)
         vert_shader = compileShader(vert_shader_source, GL.GL_VERTEX_SHADER)
@@ -106,29 +73,22 @@ class Window(game_core.AbstractWindow):
 
         # populate the shader's MVP matrices and pull the "camera" back 1.5 units
         with self.shader:
-            print('Setting cameraToClipMatrix:')
-            perspective_matrix = self.build_perspective_matrix()
-            print(perspective_matrix)
             GL.glUniformMatrix4fv(
                 self.shader.uniforms['cameraToClipMatrix'],
                 1,
                 GL.GL_FALSE,
-                perspective_matrix.tolist(),
+                self.camera.projection_matrix.tolist(),
             )
-            print('Setting worldToCameraMatrix:')
-            camera_matrix = game_core.Matrix()
-            camera_matrix[3, 2] = 1.5
-            inverse_camera_matrix = camera_matrix.inverse()
-            print(inverse_camera_matrix)
+
+            inverse_camera_matrix = self.camera.matrix.inverse()
             GL.glUniformMatrix4fv(
                 self.shader.uniforms['worldToCameraMatrix'],
                 1,
                 GL.GL_FALSE,
                 inverse_camera_matrix.tolist()
             )
-            print('Setting modelToWorldMatrix:')
+
             model_mat = game_core.Matrix()
-            print(model_mat)
             GL.glUniformMatrix4fv(
                 self.shader.uniforms['modelToWorldMatrix'],
                 1,
