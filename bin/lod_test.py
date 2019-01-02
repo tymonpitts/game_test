@@ -263,11 +263,14 @@ class LodTestItem(game_core.TreeNode):
                 continue
             for j, vertex in enumerate(child.get_vertexes()):
                 if i != j:
-                    vertex.pos_vector = vertexes[j].pos - vertex.pos
-                    vertex.normal_vector = vertexes[j].normal - vertex.normal
-                    if children[j].get_value() is not None and children[j].get_item_value() is not None:
-                        vertex.pos_vector *= 0.5
-                        vertex.normal_vector *= 0.5
+                    if children[j].get_value() is None and children[j].get_item_value() is None:
+                        ref_pos = vertexes[j]
+                        ref_normal = vertexes[j]
+                    else:
+                        ref_pos = game_core.Point((vertexes[i].pos + vertexes[j].pos) * 0.5)
+                        ref_normal = (vertexes[i].normal + vertexes[j].normal) * 0.5
+                    vertex.pos_vector = ref_pos - vertex.pos
+                    vertex.normal_vector = ref_normal - vertex.normal
         self.set_vertexes(tuple(vertexes))
 
     def init_gl_vertex_array(self):
@@ -283,8 +286,9 @@ class LodTestItem(game_core.TreeNode):
         data += [v.pos_vector[i] for v in vertexes for i in range(3)]
         data += [v.normal_vector[i] for v in vertexes for i in range(3)]
 
-        array_type = (GL.GLfloat*len(data))
+        b array_type = (GL.GLfloat*len(data))
         GL.glBufferData(
+             
                 GL.GL_ARRAY_BUFFER,
                 len(data)*FLOAT_SIZE,
                 array_type(*data),
