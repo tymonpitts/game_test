@@ -211,7 +211,6 @@ class LodTestItem(game_core.TreeNode):
             return
         else:
             self.init_leaf_vertexes()
-        self.init_gl_vertex_array()
 
     def init_leaf_vertexes(self):
         # initialize vert list with default values from smooth cube
@@ -257,10 +256,11 @@ class LodTestItem(game_core.TreeNode):
             vertexes.append(TransitionVertex(pos=pos, normal=normal))
 
         # update transition vectors for children's verts
+        print('Updating child verts...')
         for i, child in enumerate(children):
             if child.get_value() is None or child.get_item_value() is None:
                 continue
-            # print('leaf {}:'.format(bin(i)))
+            print('  leaf {}:'.format(bin(i)))
             for j, vertex in enumerate(child.get_vertexes()):
                 if i != j:
                     vertex.pos_vector = vertexes[j].pos - vertex.pos
@@ -268,7 +268,7 @@ class LodTestItem(game_core.TreeNode):
                     if children[j].get_value() is not None and children[j].get_item_value() is not None:
                         vertex.pos_vector *= 0.5
                         vertex.normal_vector *= 0.5
-                # print('  vert {} pos transition: {}'.format(bin(j), vertex.pos_vector))
+                print('    vert {}: repr={!r} pos_vector={}'.format(bin(j), vertex, vertex.pos_vector))
         self.set_vertexes(tuple(vertexes))
 
     def init_gl_vertex_array(self):
@@ -296,9 +296,9 @@ class LodTestItem(game_core.TreeNode):
         GL.glEnableVertexAttribArray(2)
         GL.glEnableVertexAttribArray(3)
         GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, None)
-        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(vertexes)*FLOAT_SIZE))
-        GL.glVertexAttribPointer(2, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(vertexes)*2*FLOAT_SIZE))
-        GL.glVertexAttribPointer(3, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(vertexes)*3*FLOAT_SIZE))
+        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(vertexes)*3*FLOAT_SIZE))
+        GL.glVertexAttribPointer(2, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(vertexes)*3*2*FLOAT_SIZE))
+        GL.glVertexAttribPointer(3, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(vertexes)*3*3*FLOAT_SIZE))
 
         index_buffer = GL.glGenBuffers(1)
         GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, index_buffer)
@@ -346,12 +346,15 @@ class LodTestTree(game_core.Octree):
             child.init()
         root.init()
 
+        root.init_gl_vertex_array()
+        for index in children_to_fill:
+            child = children[index]
+            child.init_gl_vertex_array()
+
     def draw(self, window):
         # type: (Window) -> None
         root = self.get_root()  # type: LodTestItem
-        root.draw(window)
-        return
-        if window.distance_to_camera > 4:
+        if window.distance_to_camera > 5:
             root.draw(window)
         else:
             for child in root.get_children():
