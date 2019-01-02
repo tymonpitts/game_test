@@ -79,6 +79,8 @@ class Window(game_core.AbstractWindow):
         self.lod_tree = None  # type: LodTestTree
         self.light_direction = None  # type: game_core.Vector
         self.distance_to_camera = None  # type: float
+        self.transition_end_distance = 10.0
+        self.transition_range = 15.0
 
     def init(self):
         super(Window, self).init()
@@ -119,8 +121,8 @@ class Window(game_core.AbstractWindow):
         self.lod_tree = LodTestTree(size=1.0, max_depth=2)
         self.lod_tree.init()
         with self.shaders['lod_test'] as shader:
-            GL.glUniform1f(shader.uniforms['transitionEndDistance'], 2.0)
-            GL.glUniform1f(shader.uniforms['transitionRange'], 3.0)
+            GL.glUniform1f(shader.uniforms['transitionEndDistance'], self.transition_end_distance)
+            GL.glUniform1f(shader.uniforms['transitionRange'], self.transition_range)
 
     def _set_perspective_matrix(self):
         # TODO: move this to camera's reshape
@@ -168,10 +170,10 @@ class Window(game_core.AbstractWindow):
         with self.shaders['lod_test']:
             self.lod_tree.draw(self)
 
-        GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE)
-        with self.shaders['simple']:
-            self.cube.render()
-        GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)
+        # GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE)
+        # with self.shaders['simple']:
+        #     self.cube.render()
+        # GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)
 
 
 class TransitionVertex(object):
@@ -256,11 +258,9 @@ class LodTestItem(game_core.TreeNode):
             vertexes.append(TransitionVertex(pos=pos, normal=normal))
 
         # update transition vectors for children's verts
-        print('Updating child verts...')
         for i, child in enumerate(children):
             if child.get_value() is None or child.get_item_value() is None:
                 continue
-            print('  leaf {}:'.format(bin(i)))
             for j, vertex in enumerate(child.get_vertexes()):
                 if i != j:
                     vertex.pos_vector = vertexes[j].pos - vertex.pos
@@ -268,7 +268,6 @@ class LodTestItem(game_core.TreeNode):
                     if children[j].get_value() is not None and children[j].get_item_value() is not None:
                         vertex.pos_vector *= 0.5
                         vertex.normal_vector *= 0.5
-                print('    vert {}: repr={!r} pos_vector={}'.format(bin(j), vertex, vertex.pos_vector))
         self.set_vertexes(tuple(vertexes))
 
     def init_gl_vertex_array(self):
@@ -354,7 +353,7 @@ class LodTestTree(game_core.Octree):
     def draw(self, window):
         # type: (Window) -> None
         root = self.get_root()  # type: LodTestItem
-        if window.distance_to_camera > 5:
+        if window.distance_to_camera > (window.transition_end_distance + window.transition_range + 2.0):
             root.draw(window)
         else:
             for child in root.get_children():
