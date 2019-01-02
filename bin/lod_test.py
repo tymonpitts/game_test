@@ -318,17 +318,6 @@ class LodTestItem(game_core.TreeNode):
         if gl_vertex_array is None:
             return
 
-        # matrix = game_core.Matrix()
-        # for i in xrange(3):
-        #     matrix[i, i] = self.get_size()
-        #     matrix[3, i] = self.get_origin()[i]
-        # GL.glUniformMatrix4fv(
-        #     window.shaders['lod_test'].uniforms['modelToWorldMatrix'],
-        #     1,
-        #     GL.GL_FALSE,
-        #     matrix.tolist()
-        # )
-
         GL.glBindVertexArray(gl_vertex_array)
         GL.glDrawElements(smooth_cube.DRAW_METHOD, len(smooth_cube.INDICES), GL.GL_UNSIGNED_INT, None)
         GL.glBindVertexArray(0)
@@ -360,6 +349,8 @@ class LodTestTree(game_core.Octree):
     def draw(self, window):
         # type: (Window) -> None
         root = self.get_root()  # type: LodTestItem
+        root.draw(window)
+        return
         if window.distance_to_camera > 4:
             root.draw(window)
         else:
