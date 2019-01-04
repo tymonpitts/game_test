@@ -79,8 +79,10 @@ class Window(game_core.AbstractWindow):
         self.lod_tree = None  # type: LodTestTree
         self.light_direction = None  # type: game_core.Vector
         self.distance_to_camera = None  # type: float
-        self.transition_end_distance = 10.0
-        self.transition_range = 15.0
+        self.transition_end_distance = 2.0
+        self.transition_range = 3.0
+        self.level = 0
+        self.transition_progress = 0.0  # type: float
 
     def init(self):
         super(Window, self).init()
@@ -143,12 +145,26 @@ class Window(game_core.AbstractWindow):
         self._set_perspective_matrix()
 
     def integrate(self, t, delta_time):
+        if glfw.KEY_UP in self.pressed_keys:
+            self.level = min(self.level + 1, 1)
+        elif glfw.KEY_DOWN in self.pressed_keys:
+            self.level = max(self.level - 1, 0)
+        if glfw.KEY_LEFT in self.pressed_keys:
+            self.transition_progress = max(self.transition_progress - delta_time, 0.0)
+        elif glfw.KEY_RIGHT in self.pressed_keys:
+            self.transition_progress = min(self.transition_progress + delta_time, 1.0)
+
         self.camera.integrate(t, delta_time, self)
         self.distance_to_camera = (game_core.Point() * self.camera.matrix).distance(self.lod_tree.get_root().get_origin())
 
         # TODO: move this to camera's integrate
         i_cam_mat = self.camera.matrix.inverse().tolist()
-        camera_world_position = list(self.camera._pos)
+        # camera_world_position = list(self.camera._pos)
+        camera_world_position = [
+            0.0,
+            0.0,
+            self.transition_end_distance + (self.transition_range * self.transition_progress),
+        ]
         for shader in self.shaders.itervalues():
             if 'worldToCameraMatrix' in shader.uniforms:
                 with shader:
@@ -167,6 +183,7 @@ class Window(game_core.AbstractWindow):
                     )
 
     def draw(self):
+        GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE)
         with self.shaders['lod_test']:
             self.lod_tree.draw(self)
 
@@ -372,7 +389,13 @@ class LodTestTree(game_core.Octree):
     def draw(self, window):
         # type: (Window) -> None
         root = self.get_root()  # type: LodTestItem
-        if window.distance_to_camera > (window.transition_end_distance + window.transition_range + 2.0):
+        # if window.distance_to_camera > (window.transition_end_distance + window.transition_range + 2.0):
+        #     root.draw(window)
+        # else:
+        #     for child in root.get_children():
+        #         if child:
+        #             child.draw(window)
+        if window.level == 0:
             root.draw(window)
         else:
             for child in root.get_children():
