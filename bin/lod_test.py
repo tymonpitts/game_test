@@ -236,6 +236,7 @@ class LodTestItem(game_core.TreeNode):
         # initialize verts based on children's verts
         vertexes = []  # type: List[TransitionVertex]
         children = self.get_children()
+        origin_indexes = []  # type: List[int]
         for i, child in enumerate(children):
             # TODO: copy values instead of referencing
             if child.get_value() is not None and child.get_item_value() is not None:
@@ -249,6 +250,7 @@ class LodTestItem(game_core.TreeNode):
                         break
                 else:
                     pos = self.get_origin()
+                    origin_indexes.append(i)
                     # TODO: figure out proper normals
                     normal = game_core.Vector(
                         smooth_cube.NORMALS[i * 3],
@@ -262,15 +264,26 @@ class LodTestItem(game_core.TreeNode):
             if child.get_value() is None or child.get_item_value() is None:
                 continue
             for j, vertex in enumerate(child.get_vertexes()):
-                if i != j:
-                    if children[j].get_value() is None and children[j].get_item_value() is None:
-                        ref_pos = vertexes[j]
-                        ref_normal = vertexes[j]
+                if i == j:
+                    continue
+                elif i == ~j:
+                    continue
+                elif j in origin_indexes:
+                    ref_pos = vertexes[j].pos
+                    ref_normal = vertexes[j].normal
+                elif j in self.tree.neighbor_indexes[i]:
+                    ref_pos = game_core.Point((vertexes[i].pos + vertexes[j].pos) * 0.5)
+                    ref_normal = (vertexes[i].normal + vertexes[j].normal) * 0.5
+                else:
+                    for neighbor_index in self.tree.neighbor_indexes[j]:
+                        if neighbor_index in self.tree.neighbor_indexes[i]:
+                            ref_pos = game_core.Point((vertexes[neighbor_index].pos + vertexes[j].pos) * 0.5)
+                            ref_normal = (vertexes[neighbor_index].normal + vertexes[j].normal) * 0.5
+                            break
                     else:
-                        ref_pos = game_core.Point((vertexes[i].pos + vertexes[j].pos) * 0.5)
-                        ref_normal = (vertexes[i].normal + vertexes[j].normal) * 0.5
-                    vertex.pos_vector = ref_pos - vertex.pos
-                    vertex.normal_vector = ref_normal - vertex.normal
+                        raise AssertionError('sanity check failed!')
+                vertex.pos_vector = ref_pos - vertex.pos
+                vertex.normal_vector = ref_normal - vertex.normal
         self.set_vertexes(tuple(vertexes))
 
     def init_gl_vertex_array(self):
