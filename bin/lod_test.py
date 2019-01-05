@@ -253,21 +253,26 @@ class LodTestItem(game_core.TreeNode):
         # initialize verts based on children's verts
         vertexes = []  # type: List[TransitionVertex]
         children = self.get_children()
-        origin_indexes = []  # type: List[int]
+        vert_types = []  # type: List[int]
+        SAME_AS_CHILD = 0
+        SAME_AS_CHILD_NEIGHBOR = 1
+        SAME_AS_ORIGIN = 2
         for i, child in enumerate(children):
             # TODO: copy values instead of referencing
             if child.get_value() is not None and child.get_item_value() is not None:
                 pos = child.get_vertexes()[i].pos
                 normal = child.get_vertexes()[i].normal
+                vert_types.append(SAME_AS_CHILD)
             else:
                 for neighbor in self.tree.neighbor_indexes[i]:
                     if children[neighbor].get_value() is not None and children[neighbor].get_item_value() is not None:
                         pos = children[neighbor].get_vertexes()[i].pos
                         normal = children[neighbor].get_vertexes()[i].normal
+                        vert_types.append(SAME_AS_CHILD_NEIGHBOR)
                         break
                 else:
                     pos = self.get_origin()
-                    origin_indexes.append(i)
+                    vert_types.append(SAME_AS_ORIGIN)
                     # TODO: figure out proper normals
                     normal = game_core.Vector(
                         smooth_cube.NORMALS[i * 3],
@@ -286,17 +291,25 @@ class LodTestItem(game_core.TreeNode):
                     continue
                 elif i == inverted_j:
                     continue
-                elif j in origin_indexes:
+                elif vert_types[j] == SAME_AS_ORIGIN:
                     ref_pos = vertexes[j].pos
                     ref_normal = vertexes[j].normal
                 elif j in self.tree.neighbor_indexes[i]:
-                    ref_pos = game_core.Point(*list((vertexes[i].pos + vertexes[j].pos) * 0.5))
-                    ref_normal = (vertexes[i].normal + vertexes[j].normal) * 0.5
+                    if vert_types[j] == SAME_AS_CHILD_NEIGHBOR:
+                        ref_pos = vertexes[j].pos
+                        ref_normal = vertexes[j].normal
+                    else:
+                        ref_pos = game_core.Point(*list((vertexes[i].pos + vertexes[j].pos) * 0.5))
+                        ref_normal = (vertexes[i].normal + vertexes[j].normal) * 0.5
                 else:
                     for neighbor_index in self.tree.neighbor_indexes[j]:
                         if neighbor_index in self.tree.neighbor_indexes[i]:
-                            ref_pos = game_core.Point(*list((vertexes[neighbor_index].pos + vertexes[j].pos) * 0.5))
-                            ref_normal = (vertexes[neighbor_index].normal + vertexes[j].normal) * 0.5
+                            if vert_types[neighbor_index] == SAME_AS_CHILD_NEIGHBOR:
+                                ref_pos = vertexes[neighbor_index].pos
+                                ref_normal = vertexes[neighbor_index].normal
+                            else:
+                                ref_pos = game_core.Point(*list((vertexes[neighbor_index].pos + vertexes[j].pos) * 0.5))
+                                ref_normal = (vertexes[neighbor_index].normal + vertexes[j].normal) * 0.5
                             break
                     else:
                         i_neighbors = [bin(index) for index in self.tree.neighbor_indexes[i]]
