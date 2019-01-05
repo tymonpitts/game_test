@@ -286,37 +286,8 @@ class LodTestItem(game_core.TreeNode):
             if child.get_value() is None or child.get_item_value() is None:
                 continue
             for j, vertex in enumerate(child.get_vertexes()):
-                inverted_j = j ^ 0b111  # not using ~j because that turns 0b111 into -0b1000 :/
-                if i == j:
-                    continue
-                elif i == inverted_j:
-                    continue
-                elif vert_types[j] == SAME_AS_ORIGIN:
-                    ref_pos = vertexes[j].pos
-                    ref_normal = vertexes[j].normal
-                elif j in self.tree.neighbor_indexes[i]:
-                    if vert_types[j] == SAME_AS_CHILD_NEIGHBOR:
-                        ref_pos = vertexes[j].pos
-                        ref_normal = vertexes[j].normal
-                    else:
-                        ref_pos = game_core.Point(*list((vertexes[i].pos + vertexes[j].pos) * 0.5))
-                        ref_normal = (vertexes[i].normal + vertexes[j].normal) * 0.5
-                else:
-                    for neighbor_index in self.tree.neighbor_indexes[j]:
-                        if neighbor_index in self.tree.neighbor_indexes[i]:
-                            if vert_types[neighbor_index] == SAME_AS_CHILD_NEIGHBOR:
-                                ref_pos = vertexes[neighbor_index].pos
-                                ref_normal = vertexes[neighbor_index].normal
-                            else:
-                                ref_pos = game_core.Point(*list((vertexes[neighbor_index].pos + vertexes[j].pos) * 0.5))
-                                ref_normal = (vertexes[neighbor_index].normal + vertexes[j].normal) * 0.5
-                            break
-                    else:
-                        i_neighbors = [bin(index) for index in self.tree.neighbor_indexes[i]]
-                        j_neighbors = [bin(index) for index in self.tree.neighbor_indexes[j]]
-                        raise AssertionError('sanity check failed!\n  i={}  neighbors={}\n  j={}  neighbors={}\n  ~j={}'.format(bin(i), i_neighbors, bin(j), j_neighbors, bin(inverted_j)))
-                vertex.pos_vector = ref_pos - vertex.pos
-                vertex.normal_vector = ref_normal - vertex.normal
+                vertex.pos_vector = vertexes[j].pos - vertex.pos
+                vertex.normal_vector = vertexes[j].normal - vertex.normal
         self.set_vertexes(tuple(vertexes))
 
     def init_gl_vertex_array(self):
