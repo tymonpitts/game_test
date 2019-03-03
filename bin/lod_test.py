@@ -375,8 +375,8 @@ class LodTestTree(game_core.Octree):
             bounds_max = bounds.max()
             region_of_interest = OpenImageIO.ROI(
                 bounds_min.x, bounds_max.x + 1.0,
-                bounds_min.y, bounds_max.y + 1.0,
                 bounds_min.z, bounds_max.z + 1.0,
+                None, None,
                 0, 1,
             )
             stats = OpenImageIO.ImageBufAlgo.computePixelStats(
@@ -384,9 +384,9 @@ class LodTestTree(game_core.Octree):
                 region_of_interest,
                 2,  # nthreads
             )
-            if stats.max < bounds_max.y:
+            if stats.max < (bounds_max.y / 64.0):
                 continue
-            elif stats.min > bounds_min.y:
+            elif stats.min > (bounds_min.y / 64.0):
                 continue
 
             items_by_depth[item.get_depth()].append(item)
@@ -396,24 +396,10 @@ class LodTestTree(game_core.Octree):
 
         for depth_items in reversed(items_by_depth):
             for item in depth_items:
+                if item.is_leaf():
+                    item.set_child_value('foo')
                 item.init()
-
-        raise NotImplementedError
-
-        for depth_items in reversed(items_by_depth):
-            for item in depth_items:
-                item.init()
-
-        for index in children_to_fill:
-            child = children[index]
-            child.set_item_value('foo')
-            child.init()
-        root.init()
-
-        root.init_gl_vertex_array()
-        for index in children_to_fill:
-            child = children[index]
-            child.init_gl_vertex_array()
+                item.init_gl_vertex_array()
 
     def draw(self, window):
         # type: (Window) -> None
