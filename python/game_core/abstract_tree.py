@@ -3,7 +3,9 @@ __all__ = ['AbstractTree', 'TreeNode']
 from typing import Any, List, Optional
 
 from . import decorators
+from . import BoundingBox
 from . import Point
+from . import Vector
 
 
 class TreeNode(object):
@@ -157,6 +159,21 @@ class TreeNode(object):
             else:
                 result[i] -= half_size
         return result
+
+    @decorators.cached_method
+    def get_bounds(self):
+        # type: () -> BoundingBox
+        """ Get the bounding box of this node based on its origin and size
+
+        The result of this function will be cached so subsequent calls will be faster.
+
+        Returns:
+            BoundingBox
+        """
+        origin = self.get_origin()
+        size = self.get_size()
+        size_vector = Vector(size, size, size)
+        return BoundingBox(origin - size_vector, origin + size_vector)
 
 
 class _TreeNodeData(object):

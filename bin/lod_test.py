@@ -125,7 +125,7 @@ class Window(game_core.AbstractWindow):
         self.camera.init(*glfw.get_framebuffer_size(self.window))
         self._set_perspective_matrix()
 
-        self.lod_tree = LodTestTree(size=1.0, max_depth=2)
+        self.lod_tree = LodTestTree(size=64.0, max_depth=6)
         self.lod_tree.init()
         with self.shaders['lod_test'] as shader:
             GL.glUniform1f(shader.uniforms['transitionEndDistance'], self.transition_end_distance)
@@ -362,20 +362,48 @@ class LodTestTree(game_core.Octree):
         depth = 6
         assert 2 ** depth == image_buf.spec().width
         root = self.get_root()  # type: LodTestItem
+
         items = [root]
+        items_by_depth = [list() for i in range(depth)]
+        items_by_depth[0].append(root)
         while items:
             item = items.pop()
+            item.set_value([None, None, None])
+
+            bounds = item.get_bounds()
+            bounds_min = bounds.min()
+            bounds_max = bounds.max()
+            region_of_interest = OpenImageIO.ROI(
+                bounds_min.x, bounds_max.x + 1.0,
+                bounds_min.y, bounds_max.y + 1.0,
+                bounds_min.z, bounds_max.z + 1.0,
+                0, 1,
+            )
+            stats = OpenImageIO.ImageBufAlgo.computePixelStats(
+                image_buf,
+                region_of_interest,
+                2,  # nthreads
+            )
+            if stats.max < bounds_max.y:
+                continue
+            elif stats.min > bounds_min.y:
+                continue
+
+            items_by_depth[item.get_depth()].append(item)
             if item.get_depth() < depth:
                 item.split()
                 items.extend(item.get_children())
+
+        for depth_items in reversed(items_by_depth):
+            for item in depth_items:
+                item.init()
+
         raise NotImplementedError
 
-        root.set_value([None, None, None])
-        root.split()
-        children = root.get_children()  # type: List[LodTestItem]
-        for child in children:
-            child.set_value([None, None, None])
-        children_to_fill = (0b000, 0b111)
+        for depth_items in reversed(items_by_depth):
+            for item in depth_items:
+                item.init()
+
         for index in children_to_fill:
             child = children[index]
             child.set_item_value('foo')
