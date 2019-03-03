@@ -1,6 +1,11 @@
 #! /usr/bin/python
+from __future__ import print_function
+
+import os
+
 import glfw
 from OpenGL import GL
+import OpenImageIO
 
 from typing import Dict, List, Tuple
 
@@ -352,7 +357,19 @@ class LodTestTree(game_core.Octree):
         return LodTestItem(data, tree=self, parent=parent, index=index)
 
     def init(self):
+        height_map_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', 'BritanniaHeightMap2.exr'))
+        image_buf = OpenImageIO.ImageBuf(height_map_path, 0, 7)  # 8k image so miplevel 7 should be 64
+        depth = 6
+        assert 2 ** depth == image_buf.spec().width
         root = self.get_root()  # type: LodTestItem
+        items = [root]
+        while items:
+            item = items.pop()
+            if item.get_depth() < depth:
+                item.split()
+                items.extend(item.get_children())
+        raise NotImplementedError
+
         root.set_value([None, None, None])
         root.split()
         children = root.get_children()  # type: List[LodTestItem]
@@ -387,68 +404,5 @@ class LodTestTree(game_core.Octree):
                     child.draw(window)
 
 
-def generate_scenarios():
-    import inspect
-
-    def _process_string(s, indent):
-        # type: (str, int) -> str
-        return '\n'.join([('    '*indent+line) for line in s.splitlines()])
-
-    header_template = inspect.cleandoc('''
-        # Scenario {scenario}:
-        #
-        #        {7}      {4}
-        #                     ^
-        #   {3}      {0}          y
-        #                    z x >
-        #        {6}      {5}   L
-        #
-        #   {2}      {1}
-        #
-    ''')
-    coord_template = inspect.cleandoc('''
-        (
-            (..., ..., ...),
-            (..., ..., ...),
-            (..., ..., ...),
-            (..., ..., ...),
-            (..., ..., ...),
-            (..., ..., ...),
-            (..., ..., ...),
-            (..., ..., ...),
-        ),
-    ''')
-    lines = ['scenarios = [']
-    for i in range(256):
-        children_present = []
-        child_bit = 0b00000001
-        while child_bit != 0b100000000:
-            children_present.append(bool(child_bit & i))
-            child_bit = child_bit << 1
-
-        header_values = ['x' if cp else '-' for cp in children_present]
-        header = header_template.format(*header_values, scenario=i)
-
-        if children_present.count(True) == 1:
-            single_child_template = coord_template.replace('...', '0.0')
-            coord_values = [single_child_template if cp else 'None,' for cp in children_present]
-        else:
-            coord_values = [coord_template if cp else 'None,' for cp in children_present]
-
-        lines.append('')
-        lines.extend(_process_string(header, indent=1).splitlines())
-        lines.append('    (')
-        lines.extend([_process_string(v, indent=2) for v in coord_values])
-        lines.append('    ),')
-    lines.append('')
-    lines.append(']')
-
-    print('\n'.join(lines))
-    with open('/Users/tymonpitts/dev/game_test/python/tempest/data/lod_transition_proof_of_concept/generated_transitions.py', 'w') as handle:
-        handle.write('\n'.join(lines))
-    print('DONE')
-
-
 if __name__ == '__main__':
     Window().run()
-    # generate_scenarios()

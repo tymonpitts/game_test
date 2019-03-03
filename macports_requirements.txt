@@ -1,0 +1,11 @@
+glfw @3.2.1_0+docs
+openimageio @2.0.5_0+python27
+
+
+Virtual Env updates:
+====================
+- Symlink OpenImageIO.so from macports python into virtual env's lib/python2.7 directory
+
+environment variables used by PyCharm:
+======================================
+PYGLFW_LIBRARY=/opt/local/lib/libglfw.3.2.dylib
