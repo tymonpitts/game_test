@@ -127,9 +127,13 @@ class Window(game_core.AbstractWindow):
 
         self.lod_tree = LodTestTree(size=64.0, max_depth=6)
         self.lod_tree.init()
-        with self.shaders['lod_test'] as shader:
-            GL.glUniform1f(shader.uniforms['transitionEndDistance'], self.transition_end_distance)
-            GL.glUniform1f(shader.uniforms['transitionRange'], self.transition_range)
+        for depth in range(self.lod_tree.max_depth):
+            depth_size = math.pow(self.lod_tree.size, 1.0 / (depth + 1.0))
+            transition_end_distance = depth_size
+            transition_range = depth_size
+            with self.shaders['lod_test_{}'.format(depth)] as shader:
+                GL.glUniform1f(shader.uniforms['transitionEndDistance'], transition_end_distance)
+                GL.glUniform1f(shader.uniforms['transitionRange'], transition_range)
 
     def _set_perspective_matrix(self):
         # TODO: move this to camera's reshape
@@ -164,12 +168,7 @@ class Window(game_core.AbstractWindow):
 
         # TODO: move this to camera's integrate
         i_cam_mat = self.camera.matrix.inverse().tolist()
-        # camera_world_position = list(self.camera._pos)
-        camera_world_position = [
-            0.0,
-            0.0,
-            self.transition_end_distance + (self.transition_range * self.transition_progress),
-        ]
+        camera_world_position = list(self.camera._pos)
         for shader in self.shaders.itervalues():
             if 'worldToCameraMatrix' in shader.uniforms:
                 with shader:
@@ -189,8 +188,7 @@ class Window(game_core.AbstractWindow):
 
     def draw(self):
         GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE)
-        with self.shaders['lod_test']:
-            self.lod_tree.draw(self)
+        self.lod_tree.draw(self)
 
         # GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE)
         # with self.shaders['simple']:
@@ -338,13 +336,24 @@ class LodTestItem(game_core.TreeNode):
 
     def draw(self, window):
         # type: (Window) -> None
+        if self.is_branch():
+            camera_world_position = self.camera._pos
+            distance_to_camera = 
+            transition_end_distance = self.get_depth() +
+            radius = 
+            if distance_to_camera + radius > transition_end_distance:
+                for child in self.get_children();
+                    child.draw(window)
+                return
+
         gl_vertex_array = self.get_gl_vertex_array()
         if gl_vertex_array is None:
             return
 
-        GL.glBindVertexArray(gl_vertex_array)
-        GL.glDrawElements(smooth_cube.DRAW_METHOD, len(smooth_cube.INDICES), GL.GL_UNSIGNED_INT, None)
-        GL.glBindVertexArray(0)
+        with window.shaders['lod_test_{}'.format(self.get_depth())]:
+            GL.glBindVertexArray(gl_vertex_array)
+            GL.glDrawElements(smooth_cube.DRAW_METHOD, len(smooth_cube.INDICES), GL.GL_UNSIGNED_INT, None)
+            GL.glBindVertexArray(0)
 
 
 class LodTestTree(game_core.Octree):
@@ -404,6 +413,7 @@ class LodTestTree(game_core.Octree):
     def draw(self, window):
         # type: (Window) -> None
         root = self.get_root()  # type: LodTestItem
+        root.draw(window)
         # if window.distance_to_camera > (window.transition_end_distance + window.transition_range + 2.0):
         #     root.draw(window)
         # else:

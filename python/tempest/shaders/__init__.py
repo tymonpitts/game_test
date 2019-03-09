@@ -35,6 +35,8 @@ def init():
         GL.glUniform4f(shader.uniforms['lightIntensity'], 0.8, 0.8, 0.8, 1.0)
         GL.glUniform4f(shader.uniforms['ambientIntensity'], 0.2, 0.2, 0.2, 1.0)
 
+    # TODO: create a shader program for each level of the tree 
+    #       so we can set different transition ranges for each
     shaders['lod_test'] = game_core.ShaderProgram(vert_shaders['lod_test'], frag_shaders['frag'])
     shaders['lod_test'].store_uniform_location('transitionEndDistance')
     shaders['lod_test'].store_uniform_location('transitionRange')
