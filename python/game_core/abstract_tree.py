@@ -171,9 +171,9 @@ class TreeNode(object):
             BoundingBox
         """
         origin = self.get_origin()
-        size = self.get_size()
-        size_vector = Vector(size, size, size)
-        return BoundingBox(origin - size_vector, origin + size_vector)
+        half_size = self.get_size() / 2.0
+        half_size_vector = Vector(half_size, half_size, half_size)
+        return BoundingBox(origin - half_size_vector, origin + half_size_vector)
 
 
 class _TreeNodeData(object):
