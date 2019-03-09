@@ -352,11 +352,104 @@ class LodTestTree(game_core.Octree):
         """
         return LodTestItem(data, tree=self, parent=parent, index=index)
 
+    def create_texture_vao(self):
+        # type: () -> int
+        """ If we want to draw the heightmap texture then use this function
+        to generate a vertex array object to store a quad to draw the texture on
+        """
+        verts = [
+            -1.0,  1.0, 0.0,
+             1.0,  1.0, 0.0,
+             1.0, -1.0, 0.0,
+            -1.0, -1.0, 0.0,
+        ]
+        uvs = [
+            0.0, 1.0,
+            1.0, 1.0,
+            1.0, 0.0,
+            0.0, 0.0,
+        ]
+
+        texture_quad_vao = GL.glGenVertexArrays(1)
+        GL.glBindVertexArray(texture_quad_vao)
+
+        # generate vertex position buffer
+        #
+        vertexBufferObject = GL.glGenBuffers(1)
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vertexBufferObject)
+
+        array_type = (GL.GLfloat*len(verts))
+        GL.glBufferData(
+            GL.GL_ARRAY_BUFFER,
+            len(verts) * game_core.FLOAT_SIZE,
+            array_type(*verts),
+            GL.GL_STATIC_DRAW
+        )
+        GL.glEnableVertexAttribArray(0)
+        GL.glVertexAttribPointer(
+            0,              # attribute 0. No particular reason for 0, but must match the layout in the shader.
+            3,              # size
+            GL.GL_FLOAT,    # type
+            GL.GL_FALSE,    # normalized?
+            0,              # stride (offset from start of data)
+            None            # array buffer offset
+        )
+
+        # generate vertex uv buffer
+        #
+        uvBufferObject = GL.glGenBuffers(1)
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, uvBufferObject)
+
+        array_type = (GL.GLfloat*len(uvs))
+        GL.glBufferData(
+            GL.GL_ARRAY_BUFFER,
+            len(uvs) * game_core.FLOAT_SIZE,
+            array_type(*uvs),
+            GL.GL_STATIC_DRAW
+        )
+        GL.glEnableVertexAttribArray(1)
+        GL.glVertexAttribPointer(
+            1,              # attribute 1. No particular reason for 1, but must match the layout in the shader.
+            2,              # size
+            GL.GL_FLOAT,    # type
+            GL.GL_FALSE,    # normalized?
+            0,              # stride (offset from start of data)
+            None            # array buffer offset
+        )
+
+        GL.glBindVertexArray(0)
+        return texture_quad_vao
+
     def init(self):
         height_map_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', 'BritanniaHeightMap2.exr'))
         image_buf = OpenImageIO.ImageBuf(height_map_path, 0, 7)  # 8k image so miplevel 7 should be 64
         depth = 6
         assert 2 ** depth == image_buf.spec().width
+
+        # # initialize the heightmap GL texture
+        # self.texture_quad_vao = self.create_texture_vao()
+        # self.texture = GL.glGenTextures(1)  # type: int
+        # GL.glBindTexture(GL.GL_TEXTURE_2D, self.texture)
+        #
+        # # Give the image to OpenGL
+        # data = image_buf.get_pixels(OpenImageIO.FLOAT).flatten()
+        # array_type = (GL.GLfloat * len(data))
+        # GL.glTexImage2D(
+        #     GL.GL_TEXTURE_2D,  # target
+        #     0,  # mipmap level
+        #     GL.GL_RGB,  # internalformat: number of color components in the texture
+        #     image_buf.spec().width,  # width
+        #     image_buf.spec().height,  # height
+        #     0,  # border (must be 0 according to OpenGL docs)
+        #     GL.GL_RGB,  # format of the pixel data
+        #     GL.GL_FLOAT,  # data type of the pixel data
+        #     array_type(*data)
+        # )
+        #
+        # GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST)
+        # GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST)
+        # return
+
         root = self.get_root()  # type: LodTestItem
 
         items = [root]  # type: List[LodTestItem]
@@ -399,6 +492,18 @@ class LodTestTree(game_core.Octree):
 
     def draw(self, window):
         # type: (Window) -> None
+        # # draw the hieghtmap
+        # with window.shaders['heightmap'] as shader:
+        #     # Bind our texture in Texture Unit 0
+        #     GL.glActiveTexture(GL.GL_TEXTURE0)
+        #     GL.glBindTexture(GL.GL_TEXTURE_2D, self.texture)
+        #     # Set our "myTextureSampler" sampler to user Texture Unit 0
+        #     GL.glUniform1i(shader.uniforms['textureSampler'], 0)
+        #
+        #     GL.glBindVertexArray(self.texture_quad_vao)
+        #     GL.glDrawArrays(GL.GL_TRIANGLE_FAN, 0, 4)  # Starting from vertex 0; 4 vertices total -> 2 triangles
+        #     GL.glBindVertexArray(0)
+
         root = self.get_root()  # type: LodTestItem
         root.draw(window)
 
