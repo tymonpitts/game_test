@@ -1,6 +1,6 @@
 __all__ = ['AbstractTree', 'TreeNode']
 
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 
 from . import decorators
 from . import BoundingBox
@@ -33,6 +33,13 @@ class TreeNode(object):
         self.parent = parent
         self.tree = tree
         self._data = data
+
+    @decorators.cached_method
+    def index_hierarchy(self):
+        # type: () -> Tuple[int, ...]
+        if not self.parent:
+            return (self.index, )
+        return tuple(list(self.parent.index_hierarchy()) + [self.index])
 
     def __str__(self):
         if self.is_leaf():

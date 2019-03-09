@@ -1,6 +1,7 @@
 #! /usr/bin/python
 from __future__ import print_function
 
+import math
 import os
 
 import glfw
@@ -18,7 +19,8 @@ from tempest import shaders
 class Camera(game_core.AbstractCamera):
     def __init__(self, position=None):
         super(Camera, self).__init__(position)
-        self.acceleration_rate = 1.0
+        self.acceleration_rate = 10.0
+        self.max_speed = 10.0
 
         # store the last position of the cursor so we can compute how far
         # the cursor moved since the last time we integrated. This will
@@ -83,11 +85,6 @@ class Window(game_core.AbstractWindow):
         self.camera = None  # type: Camera
         self.lod_tree = None  # type: LodTestTree
         self.light_direction = None  # type: game_core.Vector
-        self.distance_to_camera = None  # type: float
-        self.transition_end_distance = 2.0
-        self.transition_range = 3.0
-        self.level = 0
-        self.transition_progress = 0.0  # type: float
 
     def init(self):
         super(Window, self).init()
@@ -117,11 +114,11 @@ class Window(game_core.AbstractWindow):
             if 'dirToLight' in shader.uniforms:
                 with shader:
                     GL.glUniform4fv(shader.uniforms['dirToLight'], 1, list(self.light_direction))
-            if 'diffuseColor' in shader.uniforms:
-                with shader:
-                    GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
+            # if 'diffuseColor' in shader.uniforms:
+            #     with shader:
+            #         GL.glUniform4f(shader.uniforms['diffuseColor'], 0.5, 0.5, 0.5, 1.0)
 
-        self.camera = Camera(position=[0.0, 0.0, 1.5])
+        self.camera = Camera(position=[0.0, 32.0, 128.0])
         self.camera.init(*glfw.get_framebuffer_size(self.window))
         self._set_perspective_matrix()
 
@@ -154,17 +151,7 @@ class Window(game_core.AbstractWindow):
         self._set_perspective_matrix()
 
     def integrate(self, t, delta_time):
-        if glfw.KEY_UP in self.pressed_keys:
-            self.level = min(self.level + 1, 1)
-        elif glfw.KEY_DOWN in self.pressed_keys:
-            self.level = max(self.level - 1, 0)
-        if glfw.KEY_LEFT in self.pressed_keys:
-            self.transition_progress = max(self.transition_progress - delta_time, 0.0)
-        elif glfw.KEY_RIGHT in self.pressed_keys:
-            self.transition_progress = min(self.transition_progress + delta_time, 1.0)
-
         self.camera.integrate(t, delta_time, self)
-        self.distance_to_camera = (game_core.Point() * self.camera.matrix).distance(self.lod_tree.get_root().get_origin())
 
         # TODO: move this to camera's integrate
         i_cam_mat = self.camera.matrix.inverse().tolist()
@@ -187,7 +174,7 @@ class Window(game_core.AbstractWindow):
                     )
 
     def draw(self):
-        GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE)
+        # GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE)
         self.lod_tree.draw(self)
 
         # GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE)
@@ -337,12 +324,12 @@ class LodTestItem(game_core.TreeNode):
     def draw(self, window):
         # type: (Window) -> None
         if self.is_branch():
-            camera_world_position = self.camera._pos
-            distance_to_camera = 
-            transition_end_distance = self.get_depth() +
-            radius = 
+            camera_world_position = window.camera._pos
+            distance_to_camera = self.get_origin().distance(camera_world_position)
+            transition_end_distance = self.get_size()
+            radius = (self.get_size() / 2.0) * math.sqrt(2.0)
             if distance_to_camera + radius > transition_end_distance:
-                for child in self.get_children();
+                for child in self.get_children():
                     child.draw(window)
                 return
 
@@ -372,8 +359,8 @@ class LodTestTree(game_core.Octree):
         assert 2 ** depth == image_buf.spec().width
         root = self.get_root()  # type: LodTestItem
 
-        items = [root]
-        items_by_depth = [list() for i in range(depth)]
+        items = [root]  # type: List[LodTestItem]
+        items_by_depth = [list() for i in range(depth)]  # type: List[List[LodTestItem]]
         items_by_depth[0].append(root)
         while items:
             item = items.pop()
@@ -383,10 +370,10 @@ class LodTestTree(game_core.Octree):
             bounds_min = bounds.min()
             bounds_max = bounds.max()
             region_of_interest = OpenImageIO.ROI(
-                bounds_min.x, bounds_max.x + 1.0,
-                bounds_min.z, bounds_max.z + 1.0,
-                None, None,
-                0, 1,
+                int(bounds_min.x), int(bounds_max.x) + 1,  # x min/max
+                int(bounds_min.z), int(bounds_max.z) + 1,  # y min/max
+                0, 0,  # z min/max
+                0, 1,  # channel begin/end (exclusive)
             )
             stats = OpenImageIO.ImageBufAlgo.computePixelStats(
                 image_buf,
@@ -406,7 +393,7 @@ class LodTestTree(game_core.Octree):
         for depth_items in reversed(items_by_depth):
             for item in depth_items:
                 if item.is_leaf():
-                    item.set_child_value('foo')
+                    item.set_item_value('foo')
                 item.init()
                 item.init_gl_vertex_array()
 
@@ -414,18 +401,6 @@ class LodTestTree(game_core.Octree):
         # type: (Window) -> None
         root = self.get_root()  # type: LodTestItem
         root.draw(window)
-        # if window.distance_to_camera > (window.transition_end_distance + window.transition_range + 2.0):
-        #     root.draw(window)
-        # else:
-        #     for child in root.get_children():
-        #         if child:
-        #             child.draw(window)
-        if window.level == 0:
-            root.draw(window)
-        else:
-            for child in root.get_children():
-                if child:
-                    child.draw(window)
 
 
 if __name__ == '__main__':

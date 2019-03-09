@@ -35,22 +35,36 @@ def init():
         GL.glUniform4f(shader.uniforms['lightIntensity'], 0.8, 0.8, 0.8, 1.0)
         GL.glUniform4f(shader.uniforms['ambientIntensity'], 0.2, 0.2, 0.2, 1.0)
 
-    # TODO: create a shader program for each level of the tree 
-    #       so we can set different transition ranges for each
-    shaders['lod_test'] = game_core.ShaderProgram(vert_shaders['lod_test'], frag_shaders['frag'])
-    shaders['lod_test'].store_uniform_location('transitionEndDistance')
-    shaders['lod_test'].store_uniform_location('transitionRange')
-    shaders['lod_test'].store_uniform_location('cameraWorldPosition')
-    shaders['lod_test'].store_uniform_location('modelToWorldMatrix')
-    shaders['lod_test'].store_uniform_location('worldToCameraMatrix')
-    shaders['lod_test'].store_uniform_location('cameraToClipMatrix')
-    shaders['lod_test'].store_uniform_location('lightIntensity')
-    shaders['lod_test'].store_uniform_location('ambientIntensity')
-    shaders['lod_test'].store_uniform_location('diffuseColor')
-    shaders['lod_test'].store_uniform_location('dirToLight')
-    with shaders['lod_test'] as shader:
-        GL.glUniform4f(shader.uniforms['lightIntensity'], 0.8, 0.8, 0.8, 1.0)
-        GL.glUniform4f(shader.uniforms['ambientIntensity'], 0.2, 0.2, 0.2, 1.0)
+    # TODO: figure out a better range than just 8
+    colors = [
+        (0.5, 0.0, 0.0),
+        (0.0, 0.5, 0.0),
+        (0.0, 0.0, 0.5),
+        (0.7, 0.0, 0.0),
+        (0.0, 0.7, 0.0),
+        (0.0, 0.0, 0.7),
+        (1.0, 0.0, 0.0),
+        (0.0, 1.0, 0.0),
+    ]
+    for i in range(8):
+        name = 'lod_test_{}'.format(i)
+        shaders[name] = game_core.ShaderProgram(vert_shaders['lod_test'], frag_shaders['frag'])
+        shaders[name].store_uniform_location('transitionEndDistance')
+        shaders[name].store_uniform_location('transitionRange')
+        shaders[name].store_uniform_location('cameraWorldPosition')
+        shaders[name].store_uniform_location('modelToWorldMatrix')
+        shaders[name].store_uniform_location('worldToCameraMatrix')
+        shaders[name].store_uniform_location('cameraToClipMatrix')
+        shaders[name].store_uniform_location('lightIntensity')
+        shaders[name].store_uniform_location('ambientIntensity')
+        shaders[name].store_uniform_location('diffuseColor')
+        shaders[name].store_uniform_location('dirToLight')
+        with shaders[name] as shader:
+            GL.glUniform4f(shader.uniforms['lightIntensity'], 0.8, 0.8, 0.8, 1.0)
+            GL.glUniform4f(shader.uniforms['ambientIntensity'], 0.2, 0.2, 0.2, 1.0)
+
+            color = colors[i]
+            GL.glUniform4f(shader.uniforms['diffuseColor'], color[0], color[1], color[2], 1.0)
 
     shaders['ndc'] = game_core.ShaderProgram(vert_shaders['ndc'], frag_shaders['ndc'])
 
