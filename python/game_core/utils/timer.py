@@ -1,5 +1,7 @@
 import time
 from collections import OrderedDict
+from typing import Dict
+
 
 class Timer(object):
     def __init__(self, name, start=False, log=False):
@@ -15,14 +17,16 @@ class Timer(object):
         if start:
             self._start_time = time.time()
         self._log = log
-        self._timers = OrderedDict()
+        self._timers = OrderedDict()  # type: Dict[str, Timer]
 
     def add_timer(self, name, start=False):
+        # type: (str, bool) -> Timer
         if name not in self._timers:
             self._timers[name] = Timer(name, start=start)
         return self._timers[name]
 
     def get_timer(self, name):
+        # type: (str) -> Timer
         return self._timers[name]
 
     def start(self, clear=False):
@@ -47,7 +51,7 @@ class Timer(object):
     def log(self, indent=0):
         print '%s%s time: %s' % ('| '*indent, self.name, self.time)
         sub_timer_time = 0.0
-        for timer in self._timers:
+        for timer in self._timers.values():
             timer.log(indent=indent+1)
             sub_timer_time += timer.time
         if self._timers and sub_timer_time < self.time:

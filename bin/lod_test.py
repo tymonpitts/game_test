@@ -423,8 +423,7 @@ class LodTestTree(game_core.Octree):
     def init(self):
         height_map_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'resources', 'BritanniaHeightMap2.exr'))
         image_buf = OpenImageIO.ImageBuf(height_map_path, 0, 7)  # 8k image so miplevel 7 should be 64
-        depth = 6
-        assert 2 ** depth == image_buf.spec().width
+        assert 2 ** self.max_depth == image_buf.spec().width
 
         # # initialize the heightmap GL texture
         # self.texture_quad_vao = self.create_texture_vao()
@@ -452,11 +451,16 @@ class LodTestTree(game_core.Octree):
 
         root = self.get_root()  # type: LodTestItem
 
+        print('generating items...')
         items = [root]  # type: List[LodTestItem]
-        items_by_depth = [list() for i in range(depth)]  # type: List[List[LodTestItem]]
+        items_by_depth = [list() for i in range(self.max_depth + 1)]  # type: List[List[LodTestItem]]
         items_by_depth[0].append(root)
+        printed_depth = -1
         while items:
-            item = items.pop()
+            item = items.pop(0)
+            if printed_depth != item.get_depth():
+                printed_depth = item.get_depth()
+                print('  working on level {} items: {}'.format(printed_depth, item.index_hierarchy()))
             item.set_value([None, None, None])
 
             bounds = item.get_bounds()
@@ -465,7 +469,7 @@ class LodTestTree(game_core.Octree):
             region_of_interest = OpenImageIO.ROI(
                 int(bounds_min.x), int(bounds_max.x) + 1,  # x min/max
                 int(bounds_min.z), int(bounds_max.z) + 1,  # y min/max
-                0, 0,  # z min/max
+                0, 1,  # z min/max
                 0, 1,  # channel begin/end (exclusive)
             )
             stats = OpenImageIO.ImageBufAlgo.computePixelStats(
@@ -473,17 +477,19 @@ class LodTestTree(game_core.Octree):
                 region_of_interest,
                 2,  # nthreads
             )
-            if stats.max < (bounds_max.y / 64.0):
+            if (stats.max[0] * self.size) < bounds_min.y:
                 continue
-            elif stats.min > (bounds_min.y / 64.0):
+            elif (stats.min[0] * self.size) > bounds_max.y:
                 continue
 
             items_by_depth[item.get_depth()].append(item)
-            if item.get_depth() < depth:
+            if item.get_depth() < self.max_depth:
                 item.split()
                 items.extend(item.get_children())
 
+        print('initializing items...')
         for depth_items in reversed(items_by_depth):
+            print('  working on level {} items'.format(depth_items[0].get_depth()))
             for item in depth_items:
                 if item.is_leaf():
                     item.set_item_value('foo')
