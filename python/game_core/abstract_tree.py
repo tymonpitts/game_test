@@ -56,7 +56,7 @@ class TreeNode(object):
     def split(self):
         # TODO: clear get_children cache
         # TODO: validate we haven't already split?
-        self._data.children = [_TreeNodeData() for i in range(self.tree.num_children)]
+        self._data.children = [_TreeNodeData(value=self.tree._get_default_node_data()) for i in range(self.tree.num_children)]
 
     def is_leaf(self):
         """ Return whether or not this node is a leaf node (i.e. has no children)
@@ -223,7 +223,10 @@ class AbstractTree(object):
         self.size = float(size)
         self.max_depth = int(max_depth)
         self.min_size = self.size / 2.0 ** self.max_depth
-        self._data = _TreeNodeData()
+        self._data = _TreeNodeData(value=self._get_default_node_data())
+
+    def _get_default_node_data(self):
+        return None
 
     def _create_node_proxy(self, data, parent=None, index=0):
         # type: (_TreeNodeData, Optional[TreeNode], int) -> TreeNode

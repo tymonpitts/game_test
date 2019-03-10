@@ -326,9 +326,9 @@ class LodTestItem(game_core.TreeNode):
         if self.is_branch():
             camera_world_position = window.camera._pos
             distance_to_camera = self.get_origin().distance(camera_world_position)
-            transition_end_distance = self.get_size()
+            transition_end_distance = self.get_size() * 2.0  # end transition from coarse to fine
             radius = (self.get_size() / 2.0) * math.sqrt(2.0)
-            if distance_to_camera + radius > transition_end_distance:
+            if distance_to_camera + radius < transition_end_distance:
                 for child in self.get_children():
                     child.draw(window)
                 return
@@ -344,6 +344,8 @@ class LodTestItem(game_core.TreeNode):
 
 
 class LodTestTree(game_core.Octree):
+    def _get_default_node_data(self):
+        return [None, None, None]
 
     def _create_node_proxy(self, data, parent=None, index=0):
         """
@@ -461,7 +463,6 @@ class LodTestTree(game_core.Octree):
             if printed_depth != item.get_depth():
                 printed_depth = item.get_depth()
                 print('  working on level {} items: {}'.format(printed_depth, item.index_hierarchy()))
-            item.set_value([None, None, None])
 
             bounds = item.get_bounds()
             bounds_min = bounds.min()
@@ -486,13 +487,13 @@ class LodTestTree(game_core.Octree):
             if item.get_depth() < self.max_depth:
                 item.split()
                 items.extend(item.get_children())
+            else:
+                item.set_item_value('foo')
 
         print('initializing items...')
         for depth_items in reversed(items_by_depth):
             print('  working on level {} items'.format(depth_items[0].get_depth()))
             for item in depth_items:
-                if item.is_leaf():
-                    item.set_item_value('foo')
                 item.init()
                 item.init_gl_vertex_array()
 
