@@ -49,8 +49,8 @@ def init():
     for i in range(8):
         name = 'lod_test_{}'.format(i)
         shaders[name] = game_core.ShaderProgram(vert_shaders['lod_test'], frag_shaders['frag'])
-        shaders[name].store_uniform_location('transitionEndDistance')
-        shaders[name].store_uniform_location('transitionRange')
+        shaders[name].store_uniform_location('fineDistance')
+        shaders[name].store_uniform_location('coarseDistance')
         shaders[name].store_uniform_location('cameraWorldPosition')
         shaders[name].store_uniform_location('modelToWorldMatrix')
         shaders[name].store_uniform_location('worldToCameraMatrix')

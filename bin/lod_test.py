@@ -85,6 +85,15 @@ class Window(game_core.AbstractWindow):
         self.camera = None  # type: Camera
         self.lod_tree = None  # type: LodTestTree
         self.light_direction = None  # type: game_core.Vector
+        self.lod_distances = [
+            128.0,
+            90.0,
+            64.0,
+            45.0,
+            32.0,
+            22.0,
+            16.0,
+        ]  # distances at which each LOD level is at its finest
 
     def init(self):
         super(Window, self).init()
@@ -124,13 +133,16 @@ class Window(game_core.AbstractWindow):
 
         self.lod_tree = LodTestTree(size=64.0, max_depth=6)
         self.lod_tree.init()
+
         for depth in range(self.lod_tree.max_depth):
-            depth_size = math.pow(self.lod_tree.size, 1.0 / (depth + 1.0))
-            transition_end_distance = depth_size * max(3.0, 16.0 / math.sqrt(depth_size))  # end transition from coarse to fine. Number gets larger as we get finer
-            transition_range = depth_size
+            fine_distance = self.lod_distances[depth]
+            if depth == 0:
+                coarse_distance = fine_distance * 2.0
+            else:
+                coarse_distance = self.lod_distances[depth - 1]
             with self.shaders['lod_test_{}'.format(depth)] as shader:
-                GL.glUniform1f(shader.uniforms['transitionEndDistance'], transition_end_distance)
-                GL.glUniform1f(shader.uniforms['transitionRange'], transition_range)
+                GL.glUniform1f(shader.uniforms['fineDistance'], fine_distance)
+                GL.glUniform1f(shader.uniforms['coarseDistance'], coarse_distance)
 
     def _set_perspective_matrix(self):
         # TODO: move this to camera's reshape
@@ -283,7 +295,7 @@ class LodTestItem(game_core.TreeNode):
 
         # update transition vectors for children's verts
         for i, child in enumerate(children):
-            if child.get_value() is None or child.get_item_value() is None:
+            if not child.get_vertexes():
                 continue
             for j, vertex in enumerate(child.get_vertexes()):
                 vertex.pos_vector = vertexes[j].pos - vertex.pos
@@ -336,9 +348,9 @@ class LodTestItem(game_core.TreeNode):
         if self.is_branch():
             camera_world_position = window.camera._pos
             distance_to_camera = self.get_origin().distance(camera_world_position)
-            transition_end_distance = self.get_size() * max(3.0, 16.0 / math.sqrt(self.get_size()))  # end transition from coarse to fine. Number gets larger as we get finer
+            fine_distance = window.lod_distances[self.get_depth()]
             radius = (self.get_size() / 2.0) * math.sqrt(2.0)
-            if distance_to_camera + radius < transition_end_distance:
+            if distance_to_camera + radius < fine_distance:
                 for child in self.get_children():
                     child.draw(window)
                 return
