@@ -126,7 +126,7 @@ class Window(game_core.AbstractWindow):
         self.lod_tree.init()
         for depth in range(self.lod_tree.max_depth):
             depth_size = math.pow(self.lod_tree.size, 1.0 / (depth + 1.0))
-            transition_end_distance = depth_size
+            transition_end_distance = depth_size * max(3.0, 16.0 / math.sqrt(depth_size))  # end transition from coarse to fine. Number gets larger as we get finer
             transition_range = depth_size
             with self.shaders['lod_test_{}'.format(depth)] as shader:
                 GL.glUniform1f(shader.uniforms['transitionEndDistance'], transition_end_distance)
@@ -336,7 +336,7 @@ class LodTestItem(game_core.TreeNode):
         if self.is_branch():
             camera_world_position = window.camera._pos
             distance_to_camera = self.get_origin().distance(camera_world_position)
-            transition_end_distance = self.get_size() * 2.0  # end transition from coarse to fine
+            transition_end_distance = self.get_size() * max(3.0, 16.0 / math.sqrt(self.get_size()))  # end transition from coarse to fine. Number gets larger as we get finer
             radius = (self.get_size() / 2.0) * math.sqrt(2.0)
             if distance_to_camera + radius < transition_end_distance:
                 for child in self.get_children():
