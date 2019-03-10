@@ -191,6 +191,14 @@ class TransitionVertex(object):
         self.normal = normal
         self.normal_vector = normal_vector or game_core.Vector()
 
+    def __str__(self):
+        return '<TransitionVertex pos={} pos_vector={} normal={} normal_vector={}>'.format(
+            self.pos,
+            self.pos_vector,
+            self.normal,
+            self.normal_vector,
+        )
+
 
 class LodTestItem(game_core.TreeNode):
     def get_item_value(self):
@@ -249,15 +257,17 @@ class LodTestItem(game_core.TreeNode):
         SAME_AS_ORIGIN = 2
         for i, child in enumerate(children):
             # TODO: copy values instead of referencing
-            if child.get_value() is not None and child.get_item_value() is not None:
-                pos = child.get_vertexes()[i].pos
-                normal = child.get_vertexes()[i].normal
+            child_vertexes = child.get_vertexes()
+            if child_vertexes:
+                pos = child_vertexes[i].pos
+                normal = child_vertexes[i].normal
                 vert_types.append(SAME_AS_CHILD)
             else:
-                for neighbor in self.tree.neighbor_indexes[i]:
-                    if children[neighbor].get_value() is not None and children[neighbor].get_item_value() is not None:
-                        pos = children[neighbor].get_vertexes()[i].pos
-                        normal = children[neighbor].get_vertexes()[i].normal
+                for neighbor_index in self.tree.neighbor_indexes[i]:
+                    neighbor_vertexes = children[neighbor_index].get_vertexes()
+                    if neighbor_vertexes:
+                        pos = neighbor_vertexes[i].pos
+                        normal = neighbor_vertexes[i].normal
                         vert_types.append(SAME_AS_CHILD_NEIGHBOR)
                         break
                 else:
