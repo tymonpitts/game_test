@@ -66,6 +66,11 @@ def init():
             color = colors[i]
             GL.glUniform4f(shader.uniforms['diffuseColor'], color[0], color[1], color[2], 1.0)
 
+        # # FOR DEBUGGING
+        # shaders[name].store_uniform_location('coarsness')
+        # with shaders[name] as shader:
+        #     GL.glUniform1f(shader.uniforms['coarsness'], 1.0)
+
     shaders['ndc'] = game_core.ShaderProgram(vert_shaders['ndc'], frag_shaders['ndc'])
 
     shaders['simple'] = game_core.ShaderProgram(vert_shaders['simple'], frag_shaders['simple'])

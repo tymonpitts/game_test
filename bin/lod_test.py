@@ -163,6 +163,38 @@ class Window(game_core.AbstractWindow):
         self._set_perspective_matrix()
 
     def integrate(self, t, delta_time):
+        # # FOR DEBUGGING
+        # if not hasattr(self, 'display_depth'):
+        #     self.display_depth = 0
+        #     self.coarsness = 1.0
+        #     self.transition_rate = 1.0
+        # if glfw.KEY_LEFT in self.pressed_keys:
+        #     self.coarsness -= delta_time * self.transition_rate
+        #     if self.coarsness < 0.0:
+        #         self.display_depth += 1
+        #         self.coarsness = 1.0 + self.coarsness
+        #         if self.display_depth > self.lod_tree.max_depth:
+        #             self.display_depth = self.lod_tree.max_depth
+        #             self.coarsness = 0.0
+        #     print('integrate:')
+        #     print('  display_depth: {}'.format(self.display_depth))
+        #     print('  coarsness: {}'.format(self.coarsness))
+        # elif glfw.KEY_RIGHT in self.pressed_keys:
+        #     self.coarsness += delta_time * self.transition_rate
+        #     if self.coarsness > 1.0:
+        #         self.display_depth -= 1
+        #         self.coarsness = 0.0 + (1.0 - self.coarsness)
+        #         if self.display_depth < 0:
+        #             self.display_depth = 0
+        #             self.coarsness = 1.0
+        #     print('integrate:')
+        #     print('  display_depth: {}'.format(self.display_depth))
+        #     print('  coarsness: {}'.format(self.coarsness))
+        # for shader in self.shaders.itervalues():
+        #     if 'coarsness' in shader.uniforms:
+        #         with shader:
+        #             GL.glUniform1f(shader.uniforms['coarsness'], self.coarsness)
+
         self.camera.integrate(t, delta_time, self)
 
         # TODO: move this to camera's integrate
@@ -345,6 +377,7 @@ class LodTestItem(game_core.TreeNode):
 
     def draw(self, window):
         # type: (Window) -> None
+        # FOR DEBUGGING: disable this section
         if self.is_branch():
             camera_world_position = window.camera._pos
             distance_to_camera = self.get_origin().distance(camera_world_position)
@@ -517,6 +550,11 @@ class LodTestTree(game_core.Octree):
             print('  working on level {} items'.format(depth_items[0].get_depth()))
             for item in depth_items:
                 item.init()
+
+        print('initializing transition vectors:')
+        for depth_items in items_by_depth:
+            print('  working on level {} items'.format(depth_items[0].get_depth()))
+            for item in depth_items:
                 item.init_gl_vertex_array()
 
     def draw(self, window):
@@ -535,6 +573,15 @@ class LodTestTree(game_core.Octree):
 
         root = self.get_root()  # type: LodTestItem
         root.draw(window)
+
+        # # FOR DEBUGGING
+        # items = [self.get_root()]  # type: List[LodTestItem]
+        # while items:
+        #     item = items.pop(0)
+        #     if item.get_depth() < window.display_depth:
+        #         items.extend(item.get_children())
+        #     else:
+        #         item.draw(window)
 
 
 if __name__ == '__main__':
