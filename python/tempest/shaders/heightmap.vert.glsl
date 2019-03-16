@@ -1,4 +1,4 @@
-#version 330
+#version 410
 
 // Input vertex data, different for all executions of this shader.
 layout(location = 0) in vec3 vertex_position;

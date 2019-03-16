@@ -1,4 +1,4 @@
-#version 330
+#version 410
 
 smooth in vec4 interpColor;
 
