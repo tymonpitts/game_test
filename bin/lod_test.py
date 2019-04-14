@@ -519,12 +519,22 @@ class LodTestTree(game_core.Octree):
                 printed_depth = item.get_depth()
                 print('  working on level {} items: {}'.format(printed_depth, item.index_hierarchy()))
 
-            bounds = item.get_bounds()
-            bounds_min = bounds.min()
-            bounds_max = bounds.max()
+            # determine this item's bounds in the image's space. The image
+            # should have the same dimensions as the tree but the tree's
+            # origin is in the center whereas the image's is in the bottom
+            # left corner (possibly top left?) so the item's center needs to
+            # be translated.
+            half_size = self.size / 2.0
+            tree_to_image_translation = game_core.Point(half_size, 0.0, half_size)
+            item_bounds = item.get_bounds()
+            bounds_in_image_min = (item_bounds.min() + tree_to_image_translation)
+            bounds_in_image_max = (item_bounds.max() + tree_to_image_translation)
+
+            # using the item's bounds in image space computed above, compute
+            # stats about the image's pixels within this space
             region_of_interest = OpenImageIO.ROI(
-                int(bounds_min.x), int(bounds_max.x) + 1,  # x min/max
-                int(bounds_min.z), int(bounds_max.z) + 1,  # y min/max
+                int(bounds_in_image_min.x), int(bounds_in_image_max.x) + 1,  # x min/max
+                int(bounds_in_image_min.z), int(bounds_in_image_max.z) + 1,  # y min/max
                 0, 1,  # z min/max
                 0, 1,  # channel begin/end (exclusive)
             )
@@ -533,17 +543,110 @@ class LodTestTree(game_core.Octree):
                 region_of_interest,
                 2,  # nthreads
             )
-            if (stats.max[0] * self.size) < bounds_min.y:
+
+            # the stats computed above contain min/max pixel values which
+            # correspond to min/max height for the tree. However, we don't
+            # want the heightmap to go all the way to the top of the tree
+            # since that will make it look very tall so we'll scale the
+            # min/max height to only be 1/8 the size of the tree. We also want
+            # the heightmap to be centered around the tree's origin so
+            # heightmap=0 should be below the tree's origin
+            # NOTE: to avoid precision issues we round the computed values to
+            #       2 decimal places
+            max_height = self.size / 8.0
+            half_max_height = max_height / 2.0
+            image_min_height = round((stats.min[0] * max_height) - half_max_height, 2)
+            image_max_height = round((stats.max[0] * max_height) - half_max_height, 2)
+
+            # if the item is not within the min/max height range computed
+            # from the heightmap image then this is an empty item so move on
+            # NOTE: if an item's min bounds equals the max height then we
+            #       consider the item but if the item's max bounds equals the
+            #       min height then the item is empty so 2 items don't double up
+            #       on the boundaries
+            if image_max_height < bounds_in_image_min.y:
                 continue
-            elif (stats.min[0] * self.size) > bounds_max.y:
+            elif image_min_height >= bounds_in_image_max.y:
                 continue
 
+            # if we aren't at the tree's max depth then split the item and
+            # add the children to the list of items to process. Otherwise
+            # this is a leaf level item so give it a value and add it to the
+            # list of items to contribute to the mesh
             items_by_depth[item.get_depth()].append(item)
             if item.get_depth() < self.max_depth:
                 item.split()
                 items.extend(item.get_children())
             else:
                 item.set_item_value('foo')
+
+        # # FOR DEBUGGING
+        # # create a single mesh for all items
+        # print('initialziing mesh...')
+        # verts = []  # List[float]
+        # normals = []  # List[float]
+        # indexes = []  # List[int]
+        # vert_count = 0
+        # for item in items_by_depth[self.max_depth]:
+        #     for i in range(8):
+        #         cube_vert = game_core.Vector(
+        #             smooth_cube.VERTICES[i * 3],
+        #             smooth_cube.VERTICES[i * 3 + 1],
+        #             smooth_cube.VERTICES[i * 3 + 2],
+        #         )
+        #         vert = item.get_origin() + cube_vert * item.get_size()
+        #         verts.append(vert.x)
+        #         verts.append(vert.y)
+        #         verts.append(vert.z)
+        #
+        #         cube_normal = game_core.Vector(
+        #             smooth_cube.NORMALS[i * 3],
+        #             smooth_cube.NORMALS[i * 3 + 1],
+        #             smooth_cube.NORMALS[i * 3 + 2],
+        #         )
+        #         normals.append(cube_normal.x)
+        #         normals.append(cube_normal.y)
+        #         normals.append(cube_normal.z)
+        #
+        #     indexes.extend([i + vert_count for i in smooth_cube.INDICES])
+        #     vert_count += 8
+        #
+        # vertex_array = GL.glGenVertexArrays(1)
+        # self.gl_vertex_array = vertex_array
+        # GL.glBindVertexArray(vertex_array)
+        # root.set_gl_vertex_array(vertex_array)
+        # vertex_buffer = GL.glGenBuffers(1)
+        # GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vertex_buffer)
+        # data = verts + normals + [0.0 for v in verts] + [0.0 for n in normals]
+        # array_type = (GL.GLfloat*len(data))
+        # GL.glBufferData(
+        #         GL.GL_ARRAY_BUFFER,
+        #         len(data)*FLOAT_SIZE,
+        #         array_type(*data),
+        #         GL.GL_STATIC_DRAW
+        # )
+        # GL.glEnableVertexAttribArray(0)
+        # GL.glEnableVertexAttribArray(1)
+        # GL.glEnableVertexAttribArray(2)
+        # GL.glEnableVertexAttribArray(3)
+        # GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, None)
+        # GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(verts)*FLOAT_SIZE))
+        # GL.glVertexAttribPointer(2, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(verts)*2*FLOAT_SIZE))
+        # GL.glVertexAttribPointer(3, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(verts)*3*FLOAT_SIZE))
+        #
+        # index_buffer = GL.glGenBuffers(1)
+        # GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, index_buffer)
+        # self.num_indexes = len(indexes)
+        # array_type = (GL.GLuint*len(indexes))
+        # GL.glBufferData(
+        #         GL.GL_ELEMENT_ARRAY_BUFFER,
+        #         len(indexes)*FLOAT_SIZE,
+        #         array_type(*indexes),
+        #         GL.GL_STATIC_DRAW
+        # )
+        #
+        # GL.glBindVertexArray(0)
+        # return
 
         print('initializing items...')
         for depth_items in reversed(items_by_depth):
@@ -559,7 +662,15 @@ class LodTestTree(game_core.Octree):
 
     def draw(self, window):
         # type: (Window) -> None
-        # # draw the hieghtmap
+        # # FOR DEBUGGING
+        # # draw single mesh
+        # with window.shaders['lod_test_0']:
+        #     GL.glBindVertexArray(self.gl_vertex_array)
+        #     GL.glDrawElements(smooth_cube.DRAW_METHOD, self.num_indexes, GL.GL_UNSIGNED_INT, None)
+        #     GL.glBindVertexArray(0)
+        # return
+
+        # # draw the heightmap
         # with window.shaders['heightmap'] as shader:
         #     # Bind our texture in Texture Unit 0
         #     GL.glActiveTexture(GL.GL_TEXTURE0)
@@ -570,6 +681,7 @@ class LodTestTree(game_core.Octree):
         #     GL.glBindVertexArray(self.texture_quad_vao)
         #     GL.glDrawArrays(GL.GL_TRIANGLE_FAN, 0, 4)  # Starting from vertex 0; 4 vertices total -> 2 triangles
         #     GL.glBindVertexArray(0)
+        # return
 
         root = self.get_root()  # type: LodTestItem
         root.draw(window)
