@@ -165,6 +165,22 @@ class Window(game_core.AbstractWindow):
     def integrate(self, t, delta_time):
         # # FOR DEBUGGING
         # if not hasattr(self, 'display_depth'):
+        #     self.display_depth = 0.0
+        #     self.transition_rate = 0.25
+        #     self.base_visible = True
+        # if glfw.KEY_UP in self.pressed_keys:
+        #     self.display_depth -= 1.0 * self.transition_rate
+        #     self.display_depth = max(self.display_depth, 0)
+        # if glfw.KEY_DOWN in self.pressed_keys:
+        #     self.display_depth += 1.0 * self.transition_rate
+        #     self.display_depth = min(self.display_depth, self.lod_tree.max_depth)
+        # if glfw.KEY_V in self.pressed_keys:
+        #     print('toggling base visible')
+        #     self.base_visible = not self.base_visible
+        #     print('  {}'.format(self.base_visible))
+
+        # # FOR DEBUGGING
+        # if not hasattr(self, 'display_depth'):
         #     self.display_depth = 0
         #     self.coarsness = 1.0
         #     self.transition_rate = 1.0
@@ -582,70 +598,76 @@ class LodTestTree(game_core.Octree):
 
         # # FOR DEBUGGING
         # # create a single mesh for all items
-        # print('initialziing mesh...')
-        # verts = []  # List[float]
-        # normals = []  # List[float]
-        # indexes = []  # List[int]
-        # vert_count = 0
-        # for item in items_by_depth[self.max_depth]:
-        #     for i in range(8):
-        #         cube_vert = game_core.Vector(
-        #             smooth_cube.VERTICES[i * 3],
-        #             smooth_cube.VERTICES[i * 3 + 1],
-        #             smooth_cube.VERTICES[i * 3 + 2],
-        #         )
-        #         vert = item.get_origin() + cube_vert * item.get_size()
-        #         verts.append(vert.x)
-        #         verts.append(vert.y)
-        #         verts.append(vert.z)
+        # print('initialziing cage meshes...')
+        # self.cage_mesh_gl_vertex_arrays = []
+        # self.cage_mesh_num_indexes = []
+        # for depth in range(self.max_depth + 1):
+        #     print('  working on level {} mesh:'.format(depth))
+        #     verts = []  # List[float]
+        #     normals = []  # List[float]
+        #     indexes = []  # List[int]
+        #     vert_count = 0
+        #     for item in items_by_depth[depth]:
+        #         if not item.get_item_value() and not item.get_children():
+        #             continue
+        #         for i in range(8):
+        #             cube_vert = game_core.Vector(
+        #                 smooth_cube.VERTICES[i * 3],
+        #                 smooth_cube.VERTICES[i * 3 + 1],
+        #                 smooth_cube.VERTICES[i * 3 + 2],
+        #             )
+        #             vert = item.get_origin() + cube_vert * item.get_size()
+        #             verts.append(vert.x)
+        #             verts.append(vert.y)
+        #             verts.append(vert.z)
         #
-        #         cube_normal = game_core.Vector(
-        #             smooth_cube.NORMALS[i * 3],
-        #             smooth_cube.NORMALS[i * 3 + 1],
-        #             smooth_cube.NORMALS[i * 3 + 2],
-        #         )
-        #         normals.append(cube_normal.x)
-        #         normals.append(cube_normal.y)
-        #         normals.append(cube_normal.z)
+        #             cube_normal = game_core.Vector(
+        #                 smooth_cube.NORMALS[i * 3],
+        #                 smooth_cube.NORMALS[i * 3 + 1],
+        #                 smooth_cube.NORMALS[i * 3 + 2],
+        #             )
+        #             normals.append(cube_normal.x)
+        #             normals.append(cube_normal.y)
+        #             normals.append(cube_normal.z)
         #
-        #     indexes.extend([i + vert_count for i in smooth_cube.INDICES])
-        #     vert_count += 8
+        #         indexes.extend([i + vert_count for i in smooth_cube.INDICES])
+        #         vert_count += 8
         #
-        # vertex_array = GL.glGenVertexArrays(1)
-        # self.gl_vertex_array = vertex_array
-        # GL.glBindVertexArray(vertex_array)
-        # root.set_gl_vertex_array(vertex_array)
-        # vertex_buffer = GL.glGenBuffers(1)
-        # GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vertex_buffer)
-        # data = verts + normals + [0.0 for v in verts] + [0.0 for n in normals]
-        # array_type = (GL.GLfloat*len(data))
-        # GL.glBufferData(
-        #         GL.GL_ARRAY_BUFFER,
-        #         len(data)*FLOAT_SIZE,
-        #         array_type(*data),
-        #         GL.GL_STATIC_DRAW
-        # )
-        # GL.glEnableVertexAttribArray(0)
-        # GL.glEnableVertexAttribArray(1)
-        # GL.glEnableVertexAttribArray(2)
-        # GL.glEnableVertexAttribArray(3)
-        # GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, None)
-        # GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(verts)*FLOAT_SIZE))
-        # GL.glVertexAttribPointer(2, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(verts)*2*FLOAT_SIZE))
-        # GL.glVertexAttribPointer(3, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(verts)*3*FLOAT_SIZE))
+        #     vertex_array = GL.glGenVertexArrays(1)
+        #     self.cage_mesh_gl_vertex_arrays.append(vertex_array)
+        #     GL.glBindVertexArray(vertex_array)
+        #     root.set_gl_vertex_array(vertex_array)
+        #     vertex_buffer = GL.glGenBuffers(1)
+        #     GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vertex_buffer)
+        #     data = verts + normals + [0.0 for v in verts] + [0.0 for n in normals]
+        #     array_type = (GL.GLfloat*len(data))
+        #     GL.glBufferData(
+        #             GL.GL_ARRAY_BUFFER,
+        #             len(data)*FLOAT_SIZE,
+        #             array_type(*data),
+        #             GL.GL_STATIC_DRAW
+        #     )
+        #     GL.glEnableVertexAttribArray(0)
+        #     GL.glEnableVertexAttribArray(1)
+        #     GL.glEnableVertexAttribArray(2)
+        #     GL.glEnableVertexAttribArray(3)
+        #     GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, None)
+        #     GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(verts)*FLOAT_SIZE))
+        #     GL.glVertexAttribPointer(2, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(verts)*2*FLOAT_SIZE))
+        #     GL.glVertexAttribPointer(3, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(verts)*3*FLOAT_SIZE))
         #
-        # index_buffer = GL.glGenBuffers(1)
-        # GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, index_buffer)
-        # self.num_indexes = len(indexes)
-        # array_type = (GL.GLuint*len(indexes))
-        # GL.glBufferData(
-        #         GL.GL_ELEMENT_ARRAY_BUFFER,
-        #         len(indexes)*FLOAT_SIZE,
-        #         array_type(*indexes),
-        #         GL.GL_STATIC_DRAW
-        # )
+        #     index_buffer = GL.glGenBuffers(1)
+        #     GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, index_buffer)
+        #     self.cage_mesh_num_indexes.append(len(indexes))
+        #     array_type = (GL.GLuint*len(indexes))
+        #     GL.glBufferData(
+        #             GL.GL_ELEMENT_ARRAY_BUFFER,
+        #             len(indexes)*FLOAT_SIZE,
+        #             array_type(*indexes),
+        #             GL.GL_STATIC_DRAW
+        #     )
         #
-        # GL.glBindVertexArray(0)
+        #     GL.glBindVertexArray(0)
         # return
 
         print('initializing items...')
@@ -653,6 +675,63 @@ class LodTestTree(game_core.Octree):
             print('  working on level {} items'.format(depth_items[0].get_depth()))
             for item in depth_items:
                 item.init()
+
+        # # FOR DEBUGGING
+        # # create a single mesh for all items
+        # print('initialziing meshes...')
+        # self.mesh_gl_vertex_arrays = []
+        # self.mesh_num_indexes = []
+        # for depth in range(self.max_depth + 1):
+        #     print('  working on level {} mesh:'.format(depth))
+        #     verts = []  # List[float]
+        #     normals = []  # List[float]
+        #     indexes = []  # List[int]
+        #     vert_count = 0
+        #     for item in items_by_depth[depth]:
+        #         if not item.get_item_value() and not item.get_children():
+        #             continue
+        #         vertexes = item.get_vertexes()
+        #         verts.extend([v.pos[i] for v in vertexes for i in range(3)])
+        #         normals.extend([v.normal[i] for v in vertexes for i in range(3)])
+        #         indexes.extend([i + vert_count for i in smooth_cube.INDICES])
+        #         vert_count += 8
+        #
+        #     vertex_array = GL.glGenVertexArrays(1)
+        #     self.mesh_gl_vertex_arrays.append(vertex_array)
+        #     GL.glBindVertexArray(vertex_array)
+        #     root.set_gl_vertex_array(vertex_array)
+        #     vertex_buffer = GL.glGenBuffers(1)
+        #     GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vertex_buffer)
+        #     data = verts + normals + [0.0 for v in verts] + [0.0 for n in normals]
+        #     array_type = (GL.GLfloat*len(data))
+        #     GL.glBufferData(
+        #             GL.GL_ARRAY_BUFFER,
+        #             len(data)*FLOAT_SIZE,
+        #             array_type(*data),
+        #             GL.GL_STATIC_DRAW
+        #     )
+        #     GL.glEnableVertexAttribArray(0)
+        #     GL.glEnableVertexAttribArray(1)
+        #     GL.glEnableVertexAttribArray(2)
+        #     GL.glEnableVertexAttribArray(3)
+        #     GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, None)
+        #     GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(verts)*FLOAT_SIZE))
+        #     GL.glVertexAttribPointer(2, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(verts)*2*FLOAT_SIZE))
+        #     GL.glVertexAttribPointer(3, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(verts)*3*FLOAT_SIZE))
+        #
+        #     index_buffer = GL.glGenBuffers(1)
+        #     GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, index_buffer)
+        #     self.mesh_num_indexes.append(len(indexes))
+        #     array_type = (GL.GLuint*len(indexes))
+        #     GL.glBufferData(
+        #             GL.GL_ELEMENT_ARRAY_BUFFER,
+        #             len(indexes)*FLOAT_SIZE,
+        #             array_type(*indexes),
+        #             GL.GL_STATIC_DRAW
+        #     )
+        #
+        #     GL.glBindVertexArray(0)
+        # return
 
         print('initializing transition vectors:')
         for depth_items in items_by_depth:
@@ -664,10 +743,18 @@ class LodTestTree(game_core.Octree):
         # type: (Window) -> None
         # # FOR DEBUGGING
         # # draw single mesh
-        # with window.shaders['lod_test_0']:
-        #     GL.glBindVertexArray(self.gl_vertex_array)
-        #     GL.glDrawElements(smooth_cube.DRAW_METHOD, self.num_indexes, GL.GL_UNSIGNED_INT, None)
+        # depth = int(math.floor(getattr(window, 'display_depth', 0.0)))
+        # GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE)
+        # with window.shaders['lod_test_{}'.format(depth)]:
+        #     GL.glBindVertexArray(self.mesh_gl_vertex_arrays[depth])
+        #     GL.glDrawElements(smooth_cube.DRAW_METHOD, self.mesh_num_indexes[depth], GL.GL_UNSIGNED_INT, None)
         #     GL.glBindVertexArray(0)
+        # GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)
+        # if getattr(window, 'base_visible', True):
+        #     with window.shaders['lod_test_{}'.format(self.max_depth)]:
+        #         GL.glBindVertexArray(self.mesh_gl_vertex_arrays[self.max_depth])
+        #         GL.glDrawElements(smooth_cube.DRAW_METHOD, self.mesh_num_indexes[self.max_depth], GL.GL_UNSIGNED_INT, None)
+        #         GL.glBindVertexArray(0)
         # return
 
         # # draw the heightmap
