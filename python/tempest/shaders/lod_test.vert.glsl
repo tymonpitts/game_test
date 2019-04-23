@@ -35,7 +35,7 @@ void main()
     }
     else
     {
-        coarsness = (distance_to_camera - fineDistance) / (coarsness - fineDistance);
+        coarsness = (distance_to_camera - fineDistance) / (coarseDistance - fineDistance);
     }
 
     vec4 world_position = modelToWorldMatrix * vec4(position, 1.0);

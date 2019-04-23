@@ -314,14 +314,20 @@ class LodTestItem(game_core.TreeNode):
         vert_types = []  # type: List[int]
         SAME_AS_CHILD = 0
         SAME_AS_CHILD_NEIGHBOR = 1
-        SAME_AS_ORIGIN = 2
+        SAME_AS_OPPOSITE_CHILD_NEIGHBOR = 2
+        SAME_AS_OPPOSITE_CHILD = 3
         for i, child in enumerate(children):
             # TODO: copy values instead of referencing
             child_vertexes = child.get_vertexes()
+
+            # if we have a child at this index then the vertex at this index
+            # is the same as this child's vertex
             if child_vertexes:
                 pos = child_vertexes[i].pos
                 normal = child_vertexes[i].normal
                 vert_types.append(SAME_AS_CHILD)
+
+            # otherwise check if children at neighbor indexes and use their vertex data
             else:
                 for neighbor_index in self.tree.neighbor_indexes[i]:
                     neighbor_vertexes = children[neighbor_index].get_vertexes()
@@ -330,15 +336,24 @@ class LodTestItem(game_core.TreeNode):
                         normal = neighbor_vertexes[i].normal
                         vert_types.append(SAME_AS_CHILD_NEIGHBOR)
                         break
+
+                # otherwise check the opposite corner's neighbor indexes
                 else:
-                    pos = self.get_origin()
-                    vert_types.append(SAME_AS_ORIGIN)
-                    # TODO: figure out proper normals
-                    normal = game_core.Vector(
-                        smooth_cube.NORMALS[i * 3],
-                        smooth_cube.NORMALS[i * 3 + 1],
-                        smooth_cube.NORMALS[i * 3 + 2],
-                    )
+                    opposite_index = self.tree.get_opposite_index(i)
+                    for neighbor_index in self.tree.neighbor_indexes[opposite_index]:
+                        neighbor_vertexes = children[neighbor_index].get_vertexes()
+                        if neighbor_vertexes:
+                            pos = neighbor_vertexes[i].pos
+                            normal = neighbor_vertexes[i].normal
+                            vert_types.append(SAME_AS_OPPOSITE_CHILD_NEIGHBOR)
+                            break
+
+                    # otherwise use the vertex data from our the child at the opposite corner
+                    else:
+                        neighbor_vertexes = children[opposite_index].get_vertexes()
+                        pos = neighbor_vertexes[i].pos
+                        normal = neighbor_vertexes[i].normal
+                        vert_types.append(SAME_AS_OPPOSITE_CHILD)
             vertexes.append(TransitionVertex(pos=pos, normal=normal))
 
         # update transition vectors for children's verts

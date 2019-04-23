@@ -232,6 +232,23 @@ class AbstractTree(object):
         # type: (_TreeNodeData, Optional[TreeNode], int) -> TreeNode
         return TreeNode(data, tree=self, parent=parent, index=index)
 
+    def get_opposite_index(self, index):
+        """ Flip the bits for the provided index
+
+        NOTE: we can't just use the "~" operator here because that does
+              also flips the sign of the number (e.g. ~0b010 = -0b11)
+
+        Args:
+            index (int): int with the same number of bits as this tree has dimensions
+
+        Returns:
+            int: ``index`` with its dimension bits flipped
+        """
+        result = index
+        for dimension_bit in self.dimension_bits:
+            result ^= dimension_bit
+        return result
+
     def get_root(self):
         return self._create_node_proxy(self._data)
 
