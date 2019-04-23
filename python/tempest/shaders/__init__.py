@@ -36,15 +36,25 @@ def init():
         GL.glUniform4f(shader.uniforms['ambientIntensity'], 0.2, 0.2, 0.2, 1.0)
 
     # TODO: figure out a better range than just 8
+    # colors = [
+    #     (1.0, 0.0, 0.0),  # red
+    #     (1.0, 0.5, 0.0),  # orange
+    #     (1.0, 1.0, 0.0),  # yellow
+    #     (0.0, 1.0, 0.0),  # green
+    #     (0.0, 1.0, 1.0),  # cyan
+    #     (0.0, 0.0, 1.0),  # blue
+    #     (0.5, 0.0, 1.0),  # purple
+    #     (1.0, 0.0, 1.0),  # pink
+    # ]
     colors = [
-        (1.0, 0.0, 0.0),  # red
-        (1.0, 0.5, 0.0),  # orange
-        (1.0, 1.0, 0.0),  # yellow
-        (0.0, 1.0, 0.0),  # green
-        (0.0, 1.0, 1.0),  # cyan
-        (0.0, 0.0, 1.0),  # blue
-        (0.5, 0.0, 1.0),  # purple
-        (1.0, 0.0, 1.0),  # pink
+        (0.5, 0.75, 0.5),
+        (0.5, 0.75, 0.5),
+        (0.5, 0.75, 0.5),
+        (0.5, 0.75, 0.5),
+        (0.5, 0.75, 0.5),
+        (0.5, 0.75, 0.5),
+        (0.5, 0.75, 0.5),
+        (0.5, 0.75, 0.5),
     ]
     for i in range(8):
         name = 'lod_test_{}'.format(i)

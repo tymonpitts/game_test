@@ -86,7 +86,7 @@ class Window(game_core.AbstractWindow):
         self.lod_tree = None  # type: LodTestTree
         self.light_direction = None  # type: game_core.Vector
         self.lod_distances = [
-            128.0,
+            256.0,
             90.0,
             64.0,
             45.0,
