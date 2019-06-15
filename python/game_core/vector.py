@@ -44,3 +44,5 @@ class Vector(AbstractVector):
             result += pow(c, 2)
         return math.sqrt(result)
 
+    def __nonzero__(self):
+        return bool(self.length())

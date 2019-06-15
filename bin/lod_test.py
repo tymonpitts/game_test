@@ -1,17 +1,17 @@
 #! /usr/bin/python
 from __future__ import print_function
 
-import math
 import os
 
 import glfw
+import numpy
 from OpenGL import GL
 import OpenImageIO
-
 from typing import Dict, List, Tuple
 
 import game_core
 from game_core import FLOAT_SIZE
+from game_core import decorators
 from tempest.data.lod_transition_proof_of_concept import smooth_cube
 from tempest import shaders
 
@@ -243,195 +243,68 @@ class Window(game_core.AbstractWindow):
         # GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)
 
 
-class TransitionVertex(object):
-    def __init__(self, pos, normal, pos_vector=None, normal_vector=None):
-        # type: (game_core.Point, game_core.Vector, game_core.Vector, game_core.Vector) -> None
-        self.pos = pos
-        self.pos_vector = pos_vector or game_core.Vector()
-        self.normal = normal
-        self.normal_vector = normal_vector or game_core.Vector()
-
-    def __str__(self):
-        return '<TransitionVertex pos={} pos_vector={} normal={} normal_vector={}>'.format(
-            self.pos,
-            self.pos_vector,
-            self.normal,
-            self.normal_vector,
-        )
-
-
 class LodTestItem(game_core.TreeNode):
     def get_item_value(self):
         return self.get_value()[0]
 
-    def get_vertexes(self):
+    def get_position(self):
         return self.get_value()[1]
-
-    def get_gl_vertex_array(self):
-        return self.get_value()[2]
 
     def set_item_value(self, value):
         self.get_value()[0] = value
 
-    def set_vertexes(self, vertexes):
+    def set_position(self, vertexes):
         self.get_value()[1] = vertexes
 
-    def set_gl_vertex_array(self, vertex_array_object):
-        self.get_value()[2] = vertex_array_object
-
-    def init(self):
-        # TODO: figure out a better way to set values and init
-        # self.set_value([None, None, None])
-        if self.is_branch():
-            self.init_branch_vertexes()
-        elif self.get_item_value() is None:
+    def init_position(self):
+        if self.is_leaf():
+            # position was already initialized during item creation from heightmap
+            # if self.get_item_value() is not None:
+            #     self.set_position(self.get_origin())
             return
-        else:
-            self.init_leaf_vertexes()
 
-    def init_leaf_vertexes(self):
-        # initialize vert list with default values from smooth cube
-        self.set_vertexes(tuple(
-            TransitionVertex(
-                pos=self.get_origin() + game_core.Vector(
-                    smooth_cube.VERTICES[i * 3],
-                    smooth_cube.VERTICES[i * 3 + 1],
-                    smooth_cube.VERTICES[i * 3 + 2],
-                ) * self.get_size(),
-                normal=game_core.Vector(
-                    smooth_cube.NORMALS[i * 3],
-                    smooth_cube.NORMALS[i * 3 + 1],
-                    smooth_cube.NORMALS[i * 3 + 2],
-                ),
-            )
-            for i in range(8)
-        ))
-
-    def init_branch_vertexes(self):
-        # initialize verts based on children's verts
-        vertexes = []  # type: List[TransitionVertex]
+        # initialize position based on an average of child positions
+        child_x_positions = []  # type: List[float]
+        child_y_positions = []  # type: List[float]
+        child_z_positions = []  # type: List[float]
         children = self.get_children()
-        vert_types = []  # type: List[int]
-        SAME_AS_CHILD = 0
-        SAME_AS_CHILD_NEIGHBOR = 1
-        SAME_AS_OPPOSITE_CHILD_NEIGHBOR = 2
-        SAME_AS_OPPOSITE_CHILD = 3
         for i, child in enumerate(children):
-            # TODO: copy values instead of referencing
-            child_vertexes = child.get_vertexes()
+            child_position = child.get_position()
+            if child_position:
+                child_x_positions.append(child_position.x)
+                child_y_positions.append(child_position.y)
+                child_z_positions.append(child_position.z)
 
-            # if we have a child at this index then the vertex at this index
-            # is the same as this child's vertex
-            if child_vertexes:
-                pos = child_vertexes[i].pos
-                normal = child_vertexes[i].normal
-                vert_types.append(SAME_AS_CHILD)
+        x = sum(child_x_positions) / len(child_x_positions)
+        y = sum(child_x_positions) / len(child_y_positions)
+        z = sum(child_x_positions) / len(child_z_positions)
+        self.set_position(game_core.Point(x, y, z))
 
-            # otherwise check if children at neighbor indexes and use their vertex data
-            else:
-                for neighbor_index in self.tree.neighbor_indexes[i]:
-                    neighbor_vertexes = children[neighbor_index].get_vertexes()
-                    if neighbor_vertexes:
-                        pos = neighbor_vertexes[i].pos
-                        normal = neighbor_vertexes[i].normal
-                        vert_types.append(SAME_AS_CHILD_NEIGHBOR)
-                        break
+    @decorators.cached_method
+    def is_vertex_item(self):
+        if not self.get_item_value():
+            return False
 
-                # otherwise check the opposite corner's neighbor indexes
-                else:
-                    opposite_index = self.tree.get_opposite_index(i)
-                    for neighbor_index in self.tree.neighbor_indexes[opposite_index]:
-                        neighbor_vertexes = children[neighbor_index].get_vertexes()
-                        if neighbor_vertexes:
-                            pos = neighbor_vertexes[i].pos
-                            normal = neighbor_vertexes[i].normal
-                            vert_types.append(SAME_AS_OPPOSITE_CHILD_NEIGHBOR)
-                            break
-
-                    # otherwise use the vertex data from our the child at the opposite corner
-                    else:
-                        neighbor_vertexes = children[opposite_index].get_vertexes()
-                        pos = neighbor_vertexes[i].pos
-                        normal = neighbor_vertexes[i].normal
-                        vert_types.append(SAME_AS_OPPOSITE_CHILD)
-            vertexes.append(TransitionVertex(pos=pos, normal=normal))
-
-        # update transition vectors for children's verts
-        for i, child in enumerate(children):
-            if not child.get_vertexes():
-                continue
-            for j, vertex in enumerate(child.get_vertexes()):
-                vertex.pos_vector = vertexes[j].pos - vertex.pos
-                vertex.normal_vector = vertexes[j].normal - vertex.normal
-        self.set_vertexes(tuple(vertexes))
-
-    def init_gl_vertex_array(self):
-        vertex_array = GL.glGenVertexArrays(1)
-        GL.glBindVertexArray(vertex_array)
-        self.set_gl_vertex_array(vertex_array)
-
-        vertex_buffer = GL.glGenBuffers(1)
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vertex_buffer)
-        vertexes = self.get_vertexes()
-        data = [v.pos[i] for v in vertexes for i in range(3)]
-        data += [v.normal[i] for v in vertexes for i in range(3)]
-        data += [v.pos_vector[i] for v in vertexes for i in range(3)]
-        data += [v.normal_vector[i] for v in vertexes for i in range(3)]
-
-        array_type = (GL.GLfloat*len(data))
-        GL.glBufferData(
-                GL.GL_ARRAY_BUFFER,
-                len(data)*FLOAT_SIZE,
-                array_type(*data),
-                GL.GL_STATIC_DRAW
-        )
-        GL.glEnableVertexAttribArray(0)
-        GL.glEnableVertexAttribArray(1)
-        GL.glEnableVertexAttribArray(2)
-        GL.glEnableVertexAttribArray(3)
-        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, None)
-        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(vertexes)*3*FLOAT_SIZE))
-        GL.glVertexAttribPointer(2, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(vertexes)*3*2*FLOAT_SIZE))
-        GL.glVertexAttribPointer(3, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(vertexes)*3*3*FLOAT_SIZE))
-
-        index_buffer = GL.glGenBuffers(1)
-        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, index_buffer)
-        array_type = (GL.GLuint*len(smooth_cube.INDICES))
-        GL.glBufferData(
-                GL.GL_ELEMENT_ARRAY_BUFFER,
-                len(smooth_cube.INDICES)*FLOAT_SIZE,
-                array_type(*smooth_cube.INDICES),
-                GL.GL_STATIC_DRAW
-        )
-
-        GL.glBindVertexArray(0)
-
-    def draw(self, window):
-        # type: (Window) -> None
-        # FOR DEBUGGING: disable this section
-        if self.is_branch():
-            camera_world_position = window.camera._pos
-            distance_to_camera = self.get_origin().distance(camera_world_position)
-            fine_distance = window.lod_distances[self.get_depth()]
-            radius = (self.get_size() / 2.0) * math.sqrt(2.0)
-            if distance_to_camera + radius < fine_distance:
-                for child in self.get_children():
-                    child.draw(window)
-                return
-
-        gl_vertex_array = self.get_gl_vertex_array()
-        if gl_vertex_array is None:
-            return
-
-        with window.shaders['lod_test_{}'.format(self.get_depth())]:
-            GL.glBindVertexArray(gl_vertex_array)
-            GL.glDrawElements(smooth_cube.DRAW_METHOD, len(smooth_cube.INDICES), GL.GL_UNSIGNED_INT, None)
-            GL.glBindVertexArray(0)
+        # TODO: this doesn't handle branches
+        for neighbor in self.get_neighbors():
+            # only create vertexes for items that neighbor an empty
+            # space. There is no need to create vertexes for items that
+            # are surrounded by other items with data
+            if neighbor is None or neighbor.get_item_value() is None:
+                return True
+        return False
 
 
 class LodTestTree(game_core.Octree):
+    def __init__(self, size, max_depth):
+        super(LodTestTree, self).__init__(size, max_depth)
+        self.gl_vertex_array = None  # type: int
+        self.gl_vertex_array_num_indexes = None  # type: int
+        self.gl_point_vertex_array = None  # type: int
+        self.gl_point_vertex_array_num_vertexes = None  # type: int
+
     def _get_default_node_data(self):
-        return [None, None, None]
+        return [None, None]
 
     def _create_node_proxy(self, data, parent=None, index=0):
         """
@@ -598,6 +471,7 @@ class LodTestTree(game_core.Octree):
             if image_max_height < bounds_in_image_min.y:
                 continue
             elif image_min_height >= bounds_in_image_max.y:
+                # TODO: add items underneath height map too but not super fine detail items
                 continue
 
             # if we aren't at the tree's max depth then split the item and
@@ -610,6 +484,9 @@ class LodTestTree(game_core.Octree):
                 items.extend(item.get_children())
             else:
                 item.set_item_value('foo')
+                position = item.get_origin()
+                position.y = image_max_height
+                item.set_position(position)
 
         # # FOR DEBUGGING
         # # create a single mesh for all items
@@ -685,11 +562,13 @@ class LodTestTree(game_core.Octree):
         #     GL.glBindVertexArray(0)
         # return
 
-        print('initializing items...')
+        print('initializing item positions...')
+        # NOTE: we do this in reverse depth order since parents derive
+        #       their positions from children
         for depth_items in reversed(items_by_depth):
             print('  working on level {} items'.format(depth_items[0].get_depth()))
             for item in depth_items:
-                item.init()
+                item.init_position()
 
         # # FOR DEBUGGING
         # # create a single mesh for all items
@@ -705,7 +584,7 @@ class LodTestTree(game_core.Octree):
         #     for item in items_by_depth[depth]:
         #         if not item.get_item_value() and not item.get_children():
         #             continue
-        #         vertexes = item.get_vertexes()
+        #         vertexes = item.get_position()
         #         verts.extend([v.pos[i] for v in vertexes for i in range(3)])
         #         normals.extend([v.normal[i] for v in vertexes for i in range(3)])
         #         indexes.extend([i + vert_count for i in smooth_cube.INDICES])
@@ -748,11 +627,195 @@ class LodTestTree(game_core.Octree):
         #     GL.glBindVertexArray(0)
         # return
 
-        print('initializing transition vectors:')
-        for depth_items in items_by_depth:
-            print('  working on level {} items'.format(depth_items[0].get_depth()))
-            for item in depth_items:
-                item.init_gl_vertex_array()
+        self.generate_mesh(game_core.Point())  # TODO: generate with proper camera position
+        GL.glEnable(GL.GL_PROGRAM_POINT_SIZE)
+
+    def generate_mesh(self, camera_position):
+        print('generating mesh...')
+        vertex_items = []  # type: List[LodTestItem]
+        loop_items = [self.get_root()]  # type: List[LodTestItem]
+        while loop_items:
+            item = loop_items.pop(0)
+            if item.is_branch():
+                loop_items.extend(item.get_children())
+                continue
+
+            if not item.is_vertex_item():
+                continue
+
+            normal = game_core.Vector()
+            normal_offset = -1.0
+            for i, neighbor in enumerate(item.get_neighbors()):
+                if neighbor is None or not neighbor.is_vertex_item():
+                    neighbor_dimension = int(i / 2)
+                    # TODO: this doesn't work for single item thick walls/floors. Need double sided faces or something
+                    if normal[neighbor_dimension]:
+                        normal[neighbor_dimension] += normal_offset
+                    else:
+                        normal[neighbor_dimension] = 1.0
+                normal_offset *= -1.0
+
+            if normal:
+                item.normal = normal.normal()  # TODO: store this somewhere better?
+                item.vertex_index = len(vertex_items)
+                vertex_items.append(item)
+
+        positions_data = []  # type: List[float]
+        normals_data = []  # type: List[float]
+        coarse_position_vectors_data = []  # type: List[float]
+        coarse_normal_vectors_data = []  # type: List[float]
+        indexes_data = []  # type: List[int]
+        for item in vertex_items:
+            # add a vertex position to the array
+            position = item.get_position()
+            positions_data.append(position.x)
+            positions_data.append(position.y)
+            positions_data.append(position.z)
+
+            normals_data.append(item.normal.x)
+            normals_data.append(item.normal.y)
+            normals_data.append(item.normal.z)
+
+            coarse_position_vector = position - item.parent.get_position()
+            coarse_position_vectors_data.append(coarse_position_vector.x)
+            coarse_position_vectors_data.append(coarse_position_vector.y)
+            coarse_position_vectors_data.append(coarse_position_vector.z)
+
+            # TODO: figure out parent normals properly
+            # coarse_normal_vector = item.normal - item.parent.normal
+            coarse_normal_vector = item.normal
+            coarse_normal_vectors_data.append(coarse_normal_vector.x)
+            coarse_normal_vectors_data.append(coarse_normal_vector.y)
+            coarse_normal_vectors_data.append(coarse_normal_vector.z)
+
+            # connect to neighbors in the positive direction.
+            # neighbors in the negative direction will be connected
+            # when that neighbor connects to its neighbors in the
+            # positive direction
+            positive_neighbors = item.get_neighbors()[1::2]  # type: List[LodTestItem]
+            for neighbor_dimension, neighbor in enumerate(positive_neighbors):
+                if not hasattr(neighbor, 'vertex_index'):
+                    continue
+                for dimension_offset in (1, 2):
+                    normal_dimension = neighbor_dimension + dimension_offset
+                    if normal_dimension >= self.DIMENSIONS:
+                        normal_dimension -= self.DIMENSIONS
+
+                    if not item.normal[normal_dimension] or not neighbor.normal[normal_dimension]:
+                        continue
+                    if numpy.sign(item.normal[normal_dimension]) != numpy.sign(neighbor.normal[normal_dimension]):
+                        continue
+
+                    other_neighbor_dimension = neighbor_dimension - dimension_offset
+                    if other_neighbor_dimension < 0:
+                        other_neighbor_dimension = self.DIMENSIONS - 1
+                    other_neighbor = neighbor.get_neighbors()[(other_neighbor_dimension * 2) + 1]
+                    if not hasattr(other_neighbor, 'vertex_index'):
+                        continue
+
+                    indexes_data.append(item.vertex_index)
+                    if dimension_offset == 1:
+                        indexes_data.append(neighbor.vertex_index)
+                        indexes_data.append(other_neighbor.vertex_index)
+                    else:
+                        indexes_data.append(other_neighbor.vertex_index)
+                        indexes_data.append(neighbor.vertex_index)
+
+            # TODO: add faces for diagonal neighbor to corner neighbor
+
+        # vertex_neighbor_lists = []
+        # for vertex_index, item in enumerate(list(vertex_items)):
+        #     vertex_neighbors = []
+        #     for neighbor in item.get_diagonal_neighbors():
+        #         try:
+        #             neighbor_vertex_index = vertex_items.index(neighbor)
+        #         except IndexError:
+        #             continue
+        #         if neighbor in item.get_neighbors():
+        #             vertex_neighbors.append(neighbor)
+        #         else:
+        #
+        #         vertex_neighbors.append(neighbor_index)
+        #
+        #     if len(vertex_neighbors) <= 1:
+        #         vertex_items.remove(item)
+        #
+        # positions_data = []  # type: List[float]
+        # normals_data = []  # type: List[float]
+        # coarse_position_vectors_data = []  # type: List[float]
+        # coarse_normal_vectors_data = []  # type: List[float]
+        # indexes_data = []  # type: List[int]
+        # for vertex_index, item in enumerate(vertex_items):
+        #     # add a vertex position to the array
+        #     position = item.get_position()
+        #     positions_data.append(position.x)
+        #     positions_data.append(position.y)
+        #     positions_data.append(position.z)
+        #
+        #     # find all vertexes we should be connecting to by looking at
+        #     # adjacent (both directly and diagonally) items that are also
+        #     # contributing vertexes
+        #     vertex_neighbors = []
+        #     for neighbor in item.get_diagonal_neighbors():
+        #         try:
+        #             neighbor_index = vertex_items.index(neighbor)
+        #         except IndexError:
+        #             continue
+        #         vertex_neighbors.append(neighbor_index)
+        #
+        #     if len(vertex_neighbors)
+
+        self.gl_vertex_array_num_indexes = len(indexes_data)
+        if self.gl_vertex_array is None:
+            self.gl_vertex_array = GL.glGenVertexArrays(1)
+        GL.glBindVertexArray(self.gl_vertex_array)
+        vertex_buffer = GL.glGenBuffers(1)
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vertex_buffer)
+        data = positions_data + normals_data + coarse_position_vectors_data + coarse_normal_vectors_data
+        array_type = (GL.GLfloat*len(data))
+        GL.glBufferData(
+            GL.GL_ARRAY_BUFFER,
+            len(data)*FLOAT_SIZE,
+            array_type(*data),
+            GL.GL_STATIC_DRAW
+        )
+        GL.glEnableVertexAttribArray(0)
+        GL.glEnableVertexAttribArray(1)
+        GL.glEnableVertexAttribArray(2)
+        GL.glEnableVertexAttribArray(3)
+        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, None)
+        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(positions_data)*FLOAT_SIZE))
+        GL.glVertexAttribPointer(2, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(positions_data)*2*FLOAT_SIZE))
+        GL.glVertexAttribPointer(3, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, GL.GLvoidp(len(positions_data)*3*FLOAT_SIZE))
+
+        index_buffer = GL.glGenBuffers(1)
+        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, index_buffer)
+        array_type = (GL.GLuint*len(indexes_data))
+        GL.glBufferData(
+            GL.GL_ELEMENT_ARRAY_BUFFER,
+            len(indexes_data)*FLOAT_SIZE,
+            array_type(*indexes_data),
+            GL.GL_STATIC_DRAW
+        )
+
+        self.gl_point_vertex_array_num_vertexes = len(vertex_items)
+        if self.gl_point_vertex_array is None:
+            self.gl_point_vertex_array = GL.glGenVertexArrays(1)
+        GL.glBindVertexArray(self.gl_point_vertex_array)
+        vertex_buffer = GL.glGenBuffers(1)
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vertex_buffer)
+        data = positions_data
+        array_type = (GL.GLfloat*len(data))
+        GL.glBufferData(
+            GL.GL_ARRAY_BUFFER,
+            len(data)*FLOAT_SIZE,
+            array_type(*data),
+            GL.GL_STATIC_DRAW
+        )
+        GL.glEnableVertexAttribArray(0)
+        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, None)
+
+        GL.glBindVertexArray(0)
 
     def draw(self, window):
         # type: (Window) -> None
@@ -785,8 +848,15 @@ class LodTestTree(game_core.Octree):
         #     GL.glBindVertexArray(0)
         # return
 
-        root = self.get_root()  # type: LodTestItem
-        root.draw(window)
+        with window.shaders['lod_test_0']:
+            GL.glBindVertexArray(self.gl_vertex_array)
+            GL.glDrawElements(GL.GL_TRIANGLES, self.gl_vertex_array_num_indexes, GL.GL_UNSIGNED_INT, None)
+            GL.glBindVertexArray(0)
+
+        # with window.shaders['point']:
+        #     GL.glBindVertexArray(self.gl_point_vertex_array)
+        #     GL.glDrawArrays(GL.GL_POINTS, 0, self.gl_point_vertex_array_num_vertexes)
+        #     GL.glBindVertexArray(0)
 
         # # FOR DEBUGGING
         # items = [self.get_root()]  # type: List[LodTestItem]

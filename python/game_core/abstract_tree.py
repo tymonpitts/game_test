@@ -30,7 +30,7 @@ class TreeNode(object):
             index (int): This node's index in its parent's list of children
         """
         self.index = index
-        self.parent = parent
+        self.parent = parent  # type: Optional[TreeNode]
         self.tree = tree
         self._data = data
 
@@ -182,6 +182,64 @@ class TreeNode(object):
         half_size_vector = Vector(half_size, half_size, half_size)
         return BoundingBox(origin - half_size_vector, origin + half_size_vector)
 
+    def get_neighbor(self, dimension, negative):
+        if not self.parent:
+            return None
+        neighbor_index = self.tree.neighbor_sibling_indexes[self.index][dimension]
+        if self.index & self.tree.dimension_bits[dimension]:
+            if negative:
+                return self.parent.get_children()[neighbor_index]
+            else:
+                # TODO: this doesn't account for sparse trees
+                parent_neighbor = self.parent.get_neighbor(dimension, negative)
+                if parent_neighbor is None:
+                    return None
+                if parent_neighbor.is_leaf():
+                    return parent_neighbor
+                return parent_neighbor.get_children()[neighbor_index]
+        elif not negative:
+            return self.parent.get_children()[neighbor_index]
+        else:
+            parent_neighbor = self.parent.get_neighbor(dimension, negative)
+            if parent_neighbor is None:
+                return None
+            if parent_neighbor.is_leaf():
+                return parent_neighbor
+            return parent_neighbor.get_children()[neighbor_index]
+
+    @decorators.cached_method
+    def get_neighbors(self):
+        # type: () -> Optional[Tuple[TreeNode, ...]]
+        if not self.parent:
+            return None
+        result = []
+        for dimension in range(self.tree.DIMENSIONS):
+            result.append(self.get_neighbor(dimension, negative=True))
+            result.append(self.get_neighbor(dimension, negative=False))
+        return tuple(result)
+
+    @decorators.cached_method
+    def get_diagonal_neighbors(self):
+        # type: () -> Optional[Tuple[TreeNode, ...]]
+        neighbors = self.get_neighbors()
+        if not neighbors:
+            return None
+
+        # TODO: this is not agnostic of number of dimensions
+        result = list(neighbors)
+        for i, neighbor in enumerate(neighbors):
+            neighbor_dimension = int(i / 2)
+            diagonal_dimension = neighbor_dimension - 1 if neighbor_dimension else self.tree.DIMENSIONS - 1
+            result.append(neighbor.get_neighbor(diagonal_dimension, negative=True))
+            result.append(neighbor.get_neighbor(diagonal_dimension, negative=False))
+
+            if neighbor_dimension < self.tree.DIMENSIONS - 1:
+                corner_dimension = diagonal_dimension - 1 if diagonal_dimension else self.tree.DIMENSIONS - 1
+                result[-2].get_neighbor(corner_dimension, negative=True)
+                result[-1].get_neighbor(corner_dimension, negative=False)
+        assert len(result) == 26
+        return tuple(result)
+
 
 class _TreeNodeData(object):
     """ Internal object to store just the data of a node in a tree
@@ -202,7 +260,7 @@ class AbstractTree(object):
             matches the tree's dimensions. This is used to define how
             child indexes are determined.
         num_children (int): The number of children the tree can have.
-        neighbor_indexes (Tuple[Tuple[int, ...]]): Indexes for each child's adjacent siblings
+        neighbor_sibling_indexes (Tuple[Tuple[int, ...]]): Indexes for each child's adjacent siblings
         size (int): The spacial size of the tree
         max_depth (int): The maximum allowed depth of the tree
         min_size (float): The minimum allowed size of a node within the tree.
@@ -215,7 +273,7 @@ class AbstractTree(object):
         # TODO: remove size from base class. it is not always relevant
         self.dimension_bits = tuple(1 << i for i in range(self.DIMENSIONS))
         self.num_children = 2 ** self.DIMENSIONS
-        self.neighbor_indexes = tuple(
+        self.neighbor_sibling_indexes = tuple(
             tuple(i ^ b for b in self.dimension_bits)
             for i in range(self.num_children)
         )
