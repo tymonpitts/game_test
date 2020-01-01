@@ -39,7 +39,7 @@ class BasicWindow(game_core.AbstractWindow):
         super(BasicWindow, self).init()
         vert_shader = compileShader(vert_shader_source, GL.GL_VERTEX_SHADER)
         frag_shader = compileShader(frag_shader_source, GL.GL_FRAGMENT_SHADER)
-        self.shader = game_core.ShaderProgram(vert_shader, frag_shader)
+        self.shader = game_core.shaders.ShaderProgram(vert_shader, frag_shader)
 
         self.ndc_vao = GL.glGenVertexArrays(1)
         GL.glBindVertexArray(self.ndc_vao)

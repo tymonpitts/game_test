@@ -8,13 +8,16 @@ from .vector import Vector
 
 from .bounding_box import BoundingBox, BoundingBox2D
 
-from .abstract_window import AbstractWindow
+from .text import TextCharacter
 from .abstract_tree import *
 
-from .shader import ShaderProgram
 from .mesh import Mesh
 from .octree import Octree
 from .quadtree import QuadTree
 from .heightmap import HeightMap
 from .abstract_camera import AbstractCamera
 
+from . import shaders
+from .drawing import *
+
+from .abstract_window import AbstractWindow

@@ -5,9 +5,11 @@ import glfw
 from OpenGL import GL
 from OpenGL.GL.ARB import depth_clamp
 
+from . import shaders
+
+
 class AbstractWindow(object):
-    INSTANCE = None
-    """:type: `AbstractWindow`"""
+    INSTANCE = None  # type: AbstractWindow
 
     def __init__(self):
         self.title = 'AbstractWindow'
@@ -50,6 +52,8 @@ class AbstractWindow(object):
         GL.glDepthFunc(GL.GL_LEQUAL)
         GL.glDepthRange(0.0, 1.0)
         GL.glEnable(depth_clamp.GL_DEPTH_CLAMP)
+
+        shaders.init()
 
     def pre_integration(self):
         pass
