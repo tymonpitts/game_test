@@ -16,6 +16,7 @@ class AbstractWindow(object):
         self.initial_height = 512
         self.mouse_movement = (0.0, 0.0)
         self.pressed_keys = set()
+        self.new_pressed_keys = set()
         self.INSTANCE = self
 
     def init(self):
@@ -85,7 +86,10 @@ class AbstractWindow(object):
             return
 
         # TODO: possibly use glfwSetInputMode here instead
-        if action in (glfw.PRESS, glfw.REPEAT):
+        if action == glfw.PRESS:
+            self.new_pressed_keys.add(key)  # removed later during the main loop
+            self.pressed_keys.add(key)
+        elif action == glfw.REPEAT:
             self.pressed_keys.add(key)
         else:
             self.pressed_keys.remove(key)
@@ -139,6 +143,7 @@ class AbstractWindow(object):
                     self.integrate(t, delta_time)
                     t += delta_time
                     accumulator -= delta_time
+                    self.new_pressed_keys.clear()
                 self.post_integration()
 
                 # clear the screen and redraw
