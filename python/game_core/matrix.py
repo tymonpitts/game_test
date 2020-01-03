@@ -1,14 +1,14 @@
 __all__ = ['Matrix', 'MatrixStack']
 
-#============================================================================#
-#================================================================= IMPORTS ==#
 import math
 
 import numpy
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .vector import Vector
 
 
-#============================================================================#
-#=================================================================== CLASS ==#
 class Matrix(object):
     def __init__(self, other=None):
         from . import Quaternion
@@ -31,6 +31,40 @@ class Matrix(object):
             other.as_matrix(self)
         else:
             TypeError('Unable to cast %s to Matrix' % type(other))
+
+    @classmethod
+    def from_axis_vectors(cls, x=None, y=None, z=None):
+        # type: (Optional[Vector], Optional[Vector], Optional[Vector]) -> Matrix
+        """ compute a rotation matrix from the provided axis vectors
+        (i.e. each vector is orthogonal to each other vector)
+
+        Only 2 of the vectors are required since the third can be
+        derived from the other 2
+
+        Args:
+            x (Optional[Vector]): vector representing the x-axis the matrix should rotate into
+            y (Optional[Vector]): vector representing the y-axis the matrix should rotate into
+            z (Optional[Vector]): vector representing the z-axis the matrix should rotate into
+
+        Returns:
+            Matrix: a transform matrix that will rotate into the provided coordinate system
+        """
+        axes = [x, y, z]
+        if axes.count(None) > 1:
+            raise Exception('need at least 2 axes to compute a rotation matrix')
+        elif x is None:
+            x = y ^ z
+        elif y is None:
+            y = z ^ x
+        elif z is None:
+            z = x ^ y
+
+        result = cls()
+        for i in range(3):
+            result[0, i] = x[i]
+            result[1, i] = y[i]
+            result[2, i] = z[i]
+        return result
 
     def as_quaternion(self):
         from . import Quaternion
