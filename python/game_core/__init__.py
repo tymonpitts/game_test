@@ -8,7 +8,6 @@ from .vector import Vector
 
 from .bounding_box import BoundingBox, BoundingBox2D
 
-from .text import TextCharacter
 from .abstract_tree import *
 
 from .mesh import Mesh

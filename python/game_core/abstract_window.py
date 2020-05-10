@@ -1,11 +1,17 @@
 #! /usr/bin/python
 import time
+from typing import Tuple, TYPE_CHECKING
 
 import glfw
 from OpenGL import GL
 from OpenGL.GL.ARB import depth_clamp
 
 from . import shaders
+from . import drawing
+
+if TYPE_CHECKING:
+    from . import Point
+    from . import drawing
 
 
 class AbstractWindow(object):
@@ -20,6 +26,7 @@ class AbstractWindow(object):
         self.pressed_keys = set()
         self.new_pressed_keys = set()
         self.INSTANCE = self
+        self.font = None  # type: drawing.Font
 
     def init(self):
         if not glfw.init():
@@ -54,6 +61,24 @@ class AbstractWindow(object):
         GL.glEnable(depth_clamp.GL_DEPTH_CLAMP)
 
         shaders.init()
+
+        self.font = drawing.Font()
+
+    def render_text_3d(self, text, pos, scale=1.0, color=(1.0, 0.0, 0.0, 1.0), font=None):
+        # type: (str, Point, float, Tuple[float, float, float, float], drawing.Font) -> None
+        """ Render the provided text at a point in 3D space
+
+        Args:
+            text (str): text to render
+            pos (Point): lower left corner of the text in 3D space
+            scale (float): scale factor for the font size
+            color (Tuple[float, float, float, float]): color of the text
+            font (drawing.Font): font to render the text with. If not provided
+                then this defaults to the window's font
+        """
+        font = font or self.font
+        window_size = glfw.get_framebuffer_size(self.window)
+        font.render_3d(window_size, text, pos, scale, color)
 
     def pre_integration(self):
         pass
