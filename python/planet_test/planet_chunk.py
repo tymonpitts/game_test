@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import healpy
+import astropy_healpix
 import math
 from typing import Optional, Tuple, TYPE_CHECKING
 
@@ -31,6 +31,7 @@ class PlanetChunk(object):
         # type: (PlanetChunk, int) -> None
         self.parent = parent  # type: PlanetChunk
         self.index = index  # type: int
+        # noinspection PyTypeChecker
         self.children = tuple([None] * 8)  # type: Tuple[Optional[PlanetChunk], Optional[PlanetChunk], Optional[PlanetChunk], Optional[PlanetChunk], Optional[PlanetChunk], Optional[PlanetChunk], Optional[PlanetChunk], Optional[PlanetChunk]]
         self.data = tuple([False] * 16 * 16)
         self.vertexes = None
@@ -45,7 +46,7 @@ class PlanetChunk(object):
     def get_height(self):
         tree_depth = self.get_tree_depth()
         planet = self.get_planet()
-        return planet.chunk_height / healpy.order2nside(tree_depth)
+        return planet.chunk_height / astropy_healpix.level_to_nside(tree_depth)
 
     def get_radial_distance(self):
         # type: () -> float
@@ -73,24 +74,17 @@ class PlanetChunk(object):
         # type: () -> Tuple[float, float, float]
         healpix_index = self.get_healpix_index()
         tree_depth = self.get_tree_depth()
-        nside = healpy.order2nside(tree_depth)
-        polar_angle, azimuthal_angle = healpy.pix2ang(nside, healpix_index, nest=True)
+        nside = astropy_healpix.level_to_nside(tree_depth)
+        longitude, latitude = astropy_healpix.healpix_to_lonlat(healpix_index, nside, order='nested')
         radial_distance = self.get_radial_distance()
-        return radial_distance, azimuthal_angle, polar_angle
+        return radial_distance, longitude.to_value(), latitude.to_value()
 
     def compute_vertexes(self):
         # TODO: implement properly
         spherical_coords = self.get_spherical_coordinates()
-        cylindrical_coords = (
-            spherical_coords[0] * math.sin(spherical_coords[2]),
-            spherical_coords[1],
-            spherical_coords[0] * math.cos(spherical_coords[2]),
-        )
-        cartesian_coords = (
-            cylindrical_coords[0] * math.cos(cylindrical_coords[1]),
-            cylindrical_coords[0] * math.sin(cylindrical_coords[1]),
-            cylindrical_coords[2],
-        )
+        x = spherical_coords[0] * math.cos(spherical_coords[2]) * math.cos(spherical_coords[1])
+        y = spherical_coords[0] * math.cos(spherical_coords[2]) * math.sin(spherical_coords[1])
+        z = spherical_coords[0] * math.sin(spherical_coords[2])
 
         # for now just initialize 1 vert for the center of this chunk
-        self.vertex = game_core.Point(*cartesian_coords)
+        self.vertex = game_core.Point(x, y, z)

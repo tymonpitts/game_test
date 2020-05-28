@@ -5,7 +5,7 @@ from typing import Dict
 
 import game_core
 import glfw
-import healpy
+import astropy_healpix
 from OpenGL import GL
 
 from .camera import Camera
@@ -62,7 +62,7 @@ class Window(game_core.AbstractWindow):
         inspection_index_changed = False
         if glfw.KEY_UP in self.new_pressed_keys:
             self.inspection_index += 1
-            self.inspection_index = min(self.inspection_index, healpy.nside2npix(1))
+            self.inspection_index = min(self.inspection_index, astropy_healpix.nside_to_npix(1))
             inspection_index_changed = True
         if glfw.KEY_DOWN in self.new_pressed_keys:
             self.inspection_index -= 1
@@ -70,7 +70,7 @@ class Window(game_core.AbstractWindow):
             inspection_index_changed = True
         if inspection_index_changed:
             print('inspection index: {}'.format(self.inspection_index))
-            neighbors = healpy.get_all_neighbours(1, self.inspection_index)
+            neighbors = astropy_healpix.neighbours(self.inspection_index, 1, order='nested')
             print('  south west: {}'.format(neighbors[0]))
             print('  west:       {}'.format(neighbors[1]))
             print('  north west: {}'.format(neighbors[2]))

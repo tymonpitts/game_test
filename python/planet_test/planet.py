@@ -4,7 +4,7 @@ import math
 from typing import TYPE_CHECKING
 
 from OpenGL import GL
-import healpy
+import astropy_healpix
 import trimesh
 import game_core
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     # guarded to prevent circular dependencies
     from .window import Window
 
-
+''
 class Planet(object):
     def __init__(self, circumference, chunk_height):
         # type: (float, float) -> None
@@ -24,7 +24,7 @@ class Planet(object):
         self.circumference = circumference
         self.chunk_height = chunk_height
         self.radius = self.circumference / (2.0 * math.pi)
-        self.chunks = [PlanetTopChunk(self, index) for index in range(healpy.pixelfunc.nside2npix(1))]
+        self.chunks = [PlanetTopChunk(self, index) for index in range(astropy_healpix.nside_to_npix(1))]
         self.mesh = None
         self.gl_vertex_array = None
         self.gl_vertex_array_num_indexes = None
@@ -91,7 +91,7 @@ class Planet(object):
         vertexes = [chunk.vertex[:3] for chunk in self.chunks]
         faces = []
         for chunk in self.chunks:
-            neighbor_indexes = healpy.get_all_neighbours(1, chunk.index)
+            neighbor_indexes = astropy_healpix.neighbours(chunk.index, 1, order='nested')
             faces.append([chunk.index, neighbor_indexes[0], neighbor_indexes[2]])
             if neighbor_indexes[1] != -1:
                 faces.append(neighbor_indexes[:3])
