@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
 import astropy_healpix
-import math
 from typing import Optional, Tuple, TYPE_CHECKING
 
-import game_core
+from . import utils
+
 
 if TYPE_CHECKING:
     from .planet import Planet
@@ -77,14 +77,11 @@ class PlanetChunk(object):
         nside = astropy_healpix.level_to_nside(tree_depth)
         longitude, latitude = astropy_healpix.healpix_to_lonlat(healpix_index, nside, order='nested')
         radial_distance = self.get_radial_distance()
-        return radial_distance, longitude.to_value(), latitude.to_value()
+        return radial_distance, longitude.value, latitude.value
 
     def compute_vertexes(self):
         # TODO: implement properly
-        spherical_coords = self.get_spherical_coordinates()
-        x = spherical_coords[0] * math.cos(spherical_coords[2]) * math.cos(spherical_coords[1])
-        y = spherical_coords[0] * math.cos(spherical_coords[2]) * math.sin(spherical_coords[1])
-        z = spherical_coords[0] * math.sin(spherical_coords[2])
-
+        radial_distance, longitude, latitude = self.get_spherical_coordinates()
         # for now just initialize 1 vert for the center of this chunk
-        self.vertex = game_core.Point(x, y, z)
+        self.vertex = utils.lonlat_to_cartesian(longitude, latitude)
+        self.vertex *= radial_distance
