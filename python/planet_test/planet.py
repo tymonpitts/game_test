@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     # guarded to prevent circular dependencies
     from .window import Window
 
-''
+
 class Planet(object):
     def __init__(self, circumference, chunk_height):
         # type: (float, float) -> None
