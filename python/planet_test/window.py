@@ -59,26 +59,32 @@ class Window(game_core.AbstractWindow):
 
     def integrate(self, t, delta_time):
         # FOR DEBUGGING
-        inspection_index_changed = False
         if glfw.KEY_UP in self.new_pressed_keys:
             self.inspection_index += 1
             self.inspection_index = min(self.inspection_index, astropy_healpix.nside_to_npix(1))
-            inspection_index_changed = True
+            print('inspection index: {}'.format(self.inspection_index))
         if glfw.KEY_DOWN in self.new_pressed_keys:
             self.inspection_index -= 1
             self.inspection_index = max(self.inspection_index, 0)
-            inspection_index_changed = True
-        if inspection_index_changed:
+            print('inspection index: {}'.format(self.inspection_index))
+        if glfw.KEY_I in self.new_pressed_keys:
+            import astropy.units
+            from . import utils
             print('inspection index: {}'.format(self.inspection_index))
             neighbors = astropy_healpix.neighbours(self.inspection_index, 1, order='nested')
-            print('  south west: {}'.format(neighbors[0]))
-            print('  west:       {}'.format(neighbors[1]))
-            print('  north west: {}'.format(neighbors[2]))
-            print('  north:      {}'.format(neighbors[3]))
-            print('  north east: {}'.format(neighbors[4]))
-            print('  east:       {}'.format(neighbors[5]))
-            print('  south east: {}'.format(neighbors[6]))
-            print('  south:      {}'.format(neighbors[7]))
+            lon, lat = astropy_healpix.healpix_to_lonlat(self.inspection_index, 1, order='nested')
+            cartesian = utils.lonlat_to_cartesian(lon.value, lat.value)
+            print('  lonlat: {:.1f}, {:.1f}'.format(lon.to(astropy.units.deg), lat.to(astropy.units.deg)))
+            print('  cartesian: {:.2f}, {:.2f}, {:.2f}'.format(*cartesian))
+            print('  neighbors:')
+            print('    south west: {}'.format(neighbors[0]))
+            print('    west:       {}'.format(neighbors[1]))
+            print('    north west: {}'.format(neighbors[2]))
+            print('    north:      {}'.format(neighbors[3]))
+            print('    north east: {}'.format(neighbors[4]))
+            print('    east:       {}'.format(neighbors[5]))
+            print('    south east: {}'.format(neighbors[6]))
+            print('    south:      {}'.format(neighbors[7]))
 
         self.camera.integrate(t, delta_time, self)
 

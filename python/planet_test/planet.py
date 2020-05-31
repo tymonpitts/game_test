@@ -88,12 +88,23 @@ class Planet(object):
 
         for chunk in self.chunks:
             chunk.compute_vertexes()
+
+        # create a Cuboctahedron using the centers of each chunk as the vertices
+        # TODO: might want to look into Dymaxion maps
         vertexes = [chunk.vertex[:3] for chunk in self.chunks]
         faces = []
         for chunk in self.chunks:
             neighbor_indexes = astropy_healpix.neighbours(chunk.index, 1, order='nested')
             faces.append([chunk.index, neighbor_indexes[0], neighbor_indexes[2]])
-            if neighbor_indexes[1] != -1:
+            if neighbor_indexes[1] == -1:
+                # add caps
+                if chunk.index == 0:
+                    faces.append([chunk.index, neighbor_indexes[2], neighbor_indexes[4]])
+                    faces.append(neighbor_indexes[2:5])
+                elif chunk.index == 8:
+                    faces.append([chunk.index, neighbor_indexes[6], neighbor_indexes[0]])
+                    faces.append([neighbor_indexes[6], neighbor_indexes[7], neighbor_indexes[0]])
+            else:
                 faces.append(neighbor_indexes[:3])
         self.mesh = trimesh.Trimesh(
             vertices=vertexes,
@@ -157,20 +168,27 @@ class Planet(object):
 
     def draw(self, window):
         # type: (Window) -> None
-        GL.glDisable(GL.GL_CULL_FACE)
-        # GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE)
-        with game_core.shaders.CONSTANT:
-            GL.glBindVertexArray(self.gl_vertex_array)
+        # draw faces with constant color
+        GL.glBindVertexArray(self.gl_vertex_array)
+        with game_core.shaders.CONSTANT as shader:
+            shader.set_uniform('color', 1, 1, 1, 1)
             GL.glDrawElements(GL.GL_TRIANGLES, self.gl_vertex_array_num_indexes, GL.GL_UNSIGNED_INT, None)
-            GL.glBindVertexArray(0)
+
+        # draw edges
+        GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE)
+        with game_core.shaders.CONSTANT:
+            shader.set_uniform('color', 0, 0, 0, 1)
+            GL.glDrawElements(GL.GL_TRIANGLES, self.gl_vertex_array_num_indexes, GL.GL_UNSIGNED_INT, None)
         GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)
 
-        # TODO: left off here. Trying to figure out why there are holes in the mesh.
-        #   I think I was in the middle of porting font code to the drawing module.
-        #   See comment there
+        # draw points
         with game_core.shaders.POINT:
             GL.glBindVertexArray(self.gl_point_vertex_array)
             GL.glDrawArrays(GL.GL_POINTS, 0, self.gl_point_vertex_array_num_vertexes)
             GL.glBindVertexArray(0)
+
+        # draw vert indexes
         for i, vert in enumerate(self.mesh.vertices):
             window.render_text_3d(str(i), pos=game_core.Point(*vert))
+
+        GL.glBindVertexArray(0)
