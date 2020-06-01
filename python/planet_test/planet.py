@@ -83,35 +83,11 @@ class Planet(object):
         # ]
 
     def init(self):
-        # TODO: use marching cubes
-        #       - scikit has an implementation that I should look into but need to check what `volume=(M, N, P) array` means
+        self.compute_mesh()
 
-        for chunk in self.chunks:
-            chunk.compute_vertexes()
-
-        # create a Cuboctahedron using the centers of each chunk as the vertices
-        # TODO: might want to look into Dymaxion maps
-        vertexes = [chunk.vertex[:3] for chunk in self.chunks]
-        faces = []
-        for chunk in self.chunks:
-            neighbor_indexes = astropy_healpix.neighbours(chunk.index, 1, order='nested')
-            faces.append([chunk.index, neighbor_indexes[0], neighbor_indexes[2]])
-            if neighbor_indexes[1] == -1:
-                # add caps
-                if chunk.index == 0:
-                    faces.append([chunk.index, neighbor_indexes[2], neighbor_indexes[4]])
-                    faces.append(neighbor_indexes[2:5])
-                elif chunk.index == 8:
-                    faces.append([chunk.index, neighbor_indexes[6], neighbor_indexes[0]])
-                    faces.append([neighbor_indexes[6], neighbor_indexes[7], neighbor_indexes[0]])
-            else:
-                faces.append(neighbor_indexes[:3])
-        self.mesh = trimesh.Trimesh(
-            vertices=vertexes,
-            faces=faces,
-            process=False,  # otherwise verts are re-ordered
-            validate=False,  # otherwise verts are re-ordered
-        )
+    def compute_mesh(self):
+        meshes = [chunk.compute_mesh() for chunk in self.chunks]
+        self.mesh = trimesh.util.concatenate(meshes)
 
         positions_data = [num for vertex in self.mesh.vertices for num in vertex]
         normals_data = [num for normal in self.mesh.vertex_normals for num in normal]
